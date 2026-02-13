@@ -421,6 +421,86 @@ export const expensesAPI = {
   },
 };
 
+// Goals API endpoints
+export const goalsAPI = {
+  getAll: async (status) => {
+    try {
+      const url = status ? `${API_BASE_URL}/goals?status=${encodeURIComponent(status)}` : `${API_BASE_URL}/goals`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return { success: false, message: 'Network error. Please check if the server is running.' };
+    }
+  },
+  getOne: async (id) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/goals/${id}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return { success: false, message: 'Network error. Please check if the server is running.' };
+    }
+  },
+  create: async (goalData) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/goals`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(goalData),
+      });
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return { success: false, message: 'Network error. Please check if the server is running.' };
+    }
+  },
+  update: async (id, goalData) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/goals/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(goalData),
+      });
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return { success: false, message: 'Network error. Please check if the server is running.' };
+    }
+  },
+  setStatus: async (id, status) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/goals/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return { success: false, message: 'Network error. Please check if the server is running.' };
+    }
+  },
+  delete: async (id) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/goals/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return { success: false, message: 'Network error. Please check if the server is running.' };
+    }
+  },
+};
+
 // Stock Deficiency API endpoints
 export const currencyAPI = {
   // Get all currencies

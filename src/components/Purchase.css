@@ -368,6 +368,7 @@
 
   .purchase-table-wrapper {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .purchase-table {
@@ -378,5 +379,57 @@
   .purchase-table td {
     padding: 12px 8px;
     font-size: 12px;
+  }
+
+  .action-btn {
+    min-width: 40px;
+    min-height: 40px;
+    padding: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .purchase-container {
+    padding: 10px;
+  }
+
+  .purchase-title {
+    font-size: 20px;
+  }
+
+  .purchase-header {
+    gap: 12px;
+  }
+
+  .new-purchase-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 14px;
+    min-height: 48px;
+  }
+
+  .purchase-form-overlay {
+    align-items: flex-end;
+  }
+
+  .purchase-form-container {
+    width: 100%;
+    max-width: 100%;
+    max-height: 92vh;
+    border-radius: 16px 16px 0 0;
+    padding: 20px 16px;
+  }
+
+  .form-header h2 {
+    font-size: 20px;
+  }
+
+  .action-buttons {
+    flex-wrap: wrap;
+  }
+
+  .action-btn {
+    min-width: 44px;
+    min-height: 44px;
   }
 }

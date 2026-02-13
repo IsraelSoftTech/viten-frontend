@@ -167,3 +167,38 @@
   color: #e55a2b;
   text-decoration: underline;
 }
+
+@media (max-width: 480px) {
+  .login-container {
+    padding: 12px;
+    align-items: flex-start;
+    padding-top: 24px;
+  }
+
+  .login-box {
+    padding: 24px 20px;
+  }
+
+  .login-title {
+    font-size: 24px;
+  }
+
+  .login-subtitle {
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+
+  .login-form {
+    gap: 18px;
+  }
+
+  .form-group input {
+    padding: 14px 16px;
+    font-size: 16px;
+  }
+
+  .login-button {
+    padding: 14px;
+    min-height: 48px;
+  }
+}

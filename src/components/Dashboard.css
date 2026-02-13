@@ -1,10 +1,11 @@
 .dashboard-container {
-  padding: 20px;
+  padding: 16px;
   max-width: 1400px;
   margin: 0 auto;
   min-height: calc(100vh - 100px);
   display: flex;
   flex-direction: column;
+  width: 100%;
 }
 
 .dashboard-title {
@@ -447,12 +448,19 @@
 }
 
 @media (max-width: 768px) {
+  .dashboard-container {
+    padding: 12px;
+  }
+
   .dashboard-cards {
     grid-template-columns: 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
   }
   
   .dashboard-title {
     font-size: 24px;
+    margin-bottom: 16px;
   }
   
   .card-value {
@@ -470,12 +478,14 @@
   }
   
   .graph-section {
-    padding: 20px;
+    padding: 16px;
+    min-height: 400px;
+    max-height: none;
   }
   
   .graph-title {
     font-size: 20px;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
   }
   
   .curve-graph {
@@ -498,11 +508,42 @@
   .summary-value {
     font-size: 20px;
   }
+
+  .pie-chart-wrapper {
+    padding: 20px;
+    min-height: 260px;
+  }
+
+  .pie-chart {
+    max-width: 260px;
+    height: 260px;
+  }
+
+  .stock-alerts-panel {
+    padding: 12px;
+  }
+
+  .alerts-title {
+    font-size: 16px;
+  }
 }
 
 @media (max-width: 480px) {
-  .card-value {
+  .dashboard-container {
+    padding: 10px;
+  }
+
+  .dashboard-title {
     font-size: 20px;
+    margin-bottom: 12px;
+  }
+
+  .dashboard-cards {
+    gap: 10px;
+  }
+
+  .card-value {
+    font-size: 18px;
   }
   
   .card-title {
@@ -510,7 +551,83 @@
   }
   
   .dashboard-card {
-    padding: 16px;
-    gap: 15px;
+    padding: 14px 16px;
+    gap: 12px;
+  }
+
+  .card-icon {
+    width: 44px;
+    height: 44px;
+    font-size: 18px;
+  }
+
+  .graph-section {
+    padding: 12px;
+  }
+
+  .graph-title {
+    font-size: 18px;
+  }
+
+  .pie-chart-wrapper {
+    padding: 12px;
+    min-height: 220px;
+  }
+
+  .pie-chart {
+    max-width: 220px;
+    height: 220px;
+  }
+
+  .pie-label {
+    font-size: 11px;
+  }
+
+  .legend-item {
+    padding: 10px;
+  }
+
+  .legend-value {
+    font-size: 14px;
+  }
+
+  .summary-value {
+    font-size: 18px;
+  }
+
+  .summary-item {
+    padding: 10px 12px;
+  }
+
+  .stock-alerts-panel {
+    padding: 10px;
+  }
+
+  .alerts-title {
+    font-size: 15px;
+  }
+
+  .alert-item {
+    padding: 10px;
+  }
+
+  .alert-detail-row {
+    flex-wrap: wrap;
+    gap: 2px;
+  }
+}
+
+@media (max-width: 360px) {
+  .dashboard-title {
+    font-size: 18px;
+  }
+
+  .card-value {
+    font-size: 16px;
+  }
+
+  .pie-chart {
+    max-width: 200px;
+    height: 200px;
   }
 }

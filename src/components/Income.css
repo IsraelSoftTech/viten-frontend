@@ -461,6 +461,7 @@
 
   .income-table-wrapper {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .income-table {
@@ -471,5 +472,57 @@
   .income-table td {
     padding: 12px 8px;
     font-size: 12px;
+  }
+
+  .action-btn {
+    min-width: 40px;
+    min-height: 40px;
+    padding: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .income-container {
+    padding: 10px;
+  }
+
+  .income-title {
+    font-size: 20px;
+  }
+
+  .income-header {
+    gap: 12px;
+  }
+
+  .new-income-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 14px;
+    min-height: 48px;
+  }
+
+  .income-form-overlay {
+    align-items: flex-end;
+  }
+
+  .income-form-container {
+    width: 100%;
+    max-width: 100%;
+    max-height: 92vh;
+    border-radius: 16px 16px 0 0;
+    padding: 20px 16px;
+  }
+
+  .form-header h2 {
+    font-size: 20px;
+  }
+
+  .action-buttons {
+    flex-wrap: wrap;
+  }
+
+  .action-btn {
+    min-width: 44px;
+    min-height: 44px;
   }
 }

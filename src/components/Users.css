@@ -235,6 +235,7 @@
 
   .users-table-wrapper {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .users-table {
@@ -245,5 +246,40 @@
   .users-table td {
     padding: 12px 8px;
     font-size: 12px;
+  }
+
+  .action-btn {
+    min-width: 40px;
+    min-height: 40px;
+    padding: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .users-container {
+    padding: 10px;
+  }
+
+  .users-title {
+    font-size: 20px;
+  }
+
+  .users-header {
+    gap: 12px;
+  }
+
+  .refresh-button {
+    width: 100%;
+    justify-content: center;
+    min-height: 48px;
+  }
+
+  .action-buttons {
+    flex-wrap: wrap;
+  }
+
+  .action-btn {
+    min-width: 44px;
+    min-height: 44px;
   }
 }

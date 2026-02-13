@@ -10,6 +10,7 @@ import Purchase from './components/Purchase';
 import Debt from './components/Debt';
 import Expenses from './components/Expenses';
 import Report from './components/Report';
+import Goal from './components/Goal';
 import Settings from './components/Settings';
 import Users from './components/Users';
 import './App.css';
@@ -42,6 +43,7 @@ function App() {
           <Route path="/debts" element={<Debt />} />
           <Route path="/expenses" element={<Expenses />} />
           <Route path="/report" element={<Report />} />
+          <Route path="/goal" element={<Goal />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/settings/currencies" element={<Settings />} />
           <Route path="/settings/backup" element={<Settings />} />

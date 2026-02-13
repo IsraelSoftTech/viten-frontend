@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
   FaThLarge, 
@@ -6,6 +6,7 @@ import {
   FaShoppingCart,
   FaCreditCard, 
   FaChartBar, 
+  FaBullseye,
   FaCog, 
   FaUsers,
   FaFileInvoiceDollar,
@@ -14,16 +15,23 @@ import {
   FaDollarSign,
   FaDatabase,
   FaSlidersH,
-  FaExclamationTriangle
+  FaExclamationTriangle,
+  FaTimes
 } from 'react-icons/fa';
 import './Sidebar.css';
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen, onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [settingsExpanded, setSettingsExpanded] = useState(
     location.pathname.startsWith('/settings')
   );
+
+  useEffect(() => {
+    if (isOpen) document.body.classList.add('sidebar-open');
+    else document.body.classList.remove('sidebar-open');
+    return () => document.body.classList.remove('sidebar-open');
+  }, [isOpen]);
 
   const menuItems = [
     { path: '/dashboard', icon: FaThLarge, label: 'Dashboard' },
@@ -32,6 +40,7 @@ const Sidebar = () => {
     { path: '/debts', icon: FaFileInvoiceDollar, label: 'Debts' },
     { path: '/expenses', icon: FaCreditCard, label: 'Expenses' },
     { path: '/report', icon: FaChartBar, label: 'Report' },
+    { path: '/goal', icon: FaBullseye, label: 'Goal' },
     { path: '/users', icon: FaUsers, label: 'Users' },
   ];
 
@@ -42,8 +51,20 @@ const Sidebar = () => {
     { path: '/settings/stock-deficiency', label: 'Stock Deficiency', icon: FaExclamationTriangle },
   ];
 
+  const handleLinkClick = () => {
+    onClose?.();
+  };
+
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${isOpen ? 'sidebar--open' : ''}`} aria-hidden={!isOpen}>
+      <button
+        type="button"
+        className="sidebar-close-btn"
+        onClick={onClose}
+        aria-label="Close menu"
+      >
+        <FaTimes />
+      </button>
       <nav className="sidebar-nav">
         {menuItems.map((item) => {
           const Icon = item.icon;
@@ -55,6 +76,7 @@ const Sidebar = () => {
               className={({ isActive }) => 
                 `nav-item ${isActive ? 'active' : ''}`
               }
+              onClick={handleLinkClick}
             >
               <Icon className="nav-icon" />
               <span className="nav-label">{item.label}</span>
@@ -93,6 +115,7 @@ const Sidebar = () => {
                     className={({ isActive }) => 
                       `nav-item submenu-item ${isActive ? 'active' : ''}`
                     }
+                    onClick={handleLinkClick}
                   >
                     <SubIcon className="nav-icon submenu-icon" />
                     <span className="nav-label">{subItem.label}</span>

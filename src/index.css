@@ -4,6 +4,10 @@
   box-sizing: border-box;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -13,6 +17,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: #ffffff;
   color: #000000;
+  overflow-x: hidden;
+}
+
+body.sidebar-open {
+  overflow: hidden;
 }
 
 code {

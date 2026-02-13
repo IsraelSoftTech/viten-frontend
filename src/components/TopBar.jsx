@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaSignOutAlt } from 'react-icons/fa';
+import { FaSignOutAlt, FaBars, FaTimes } from 'react-icons/fa';
 import logo from '../assets/logo.jpg';
 import { configurationAPI } from '../api';
 import './TopBar.css';
 
-const TopBar = () => {
+const TopBar = ({ onMenuToggle, sidebarOpen = false }) => {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const [appName, setAppName] = useState('Shop Accountant');
@@ -58,6 +58,15 @@ const TopBar = () => {
   return (
     <header className="topbar">
       <div className="topbar-left">
+        <button
+          type="button"
+          className="topbar-menu-btn"
+          onClick={() => onMenuToggle?.()}
+          aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
+          aria-expanded={sidebarOpen}
+        >
+          {sidebarOpen ? <FaTimes className="menu-icon" /> : <FaBars className="menu-icon" />}
+        </button>
         <img 
           src={logoUrl || logo} 
           alt={`${appName} Logo`} 

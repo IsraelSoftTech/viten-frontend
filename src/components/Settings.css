@@ -998,6 +998,10 @@
 }
 
 @media (max-width: 768px) {
+  .settings-container {
+    padding: 15px;
+  }
+
   .settings-title {
     font-size: 24px;
   }
@@ -1008,6 +1012,7 @@
 
   .stock-deficiency-table-wrapper {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .stock-deficiency-table {
@@ -1016,6 +1021,7 @@
 
   .currencies-table-wrapper {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .currencies-table {
@@ -1032,5 +1038,61 @@
 
   .backup-stats-grid {
     grid-template-columns: 1fr;
+  }
+
+  .config-input-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .config-save-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .settings-container {
+    padding: 10px;
+  }
+
+  .settings-title {
+    font-size: 20px;
+  }
+
+  .settings-main-content {
+    padding: 16px 12px;
+  }
+
+  .section-title {
+    font-size: 20px;
+  }
+
+  .config-section {
+    padding: 16px;
+  }
+
+  .logo-preview-section {
+    flex-direction: column;
+  }
+
+  .backup-info-card {
+    flex-direction: column;
+    padding: 16px;
+  }
+
+  .backup-action-card {
+    padding: 16px;
+  }
+
+  .backup-action-btn {
+    width: 100%;
+    min-height: 48px;
+    justify-content: center;
+  }
+
+  .action-btn {
+    min-width: 44px;
+    min-height: 44px;
   }
 }

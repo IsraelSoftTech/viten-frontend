@@ -3,17 +3,43 @@
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  min-height: 100vh;
 }
 
 .layout-content {
   display: flex;
   flex: 1;
   overflow: hidden;
+  position: relative;
+}
+
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 998;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+
+.sidebar-backdrop.sidebar-backdrop--open {
+  pointer-events: auto;
+  opacity: 1;
 }
 
 .main-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   background-color: #f5f5f5;
   padding: 0;
+  min-width: 0;
+}
+
+@media (max-width: 991px) {
+  .sidebar-backdrop {
+    display: block;
+  }
 }

@@ -52,3 +52,14 @@
     opacity: 0;
   }
 }
+
+@media (max-width: 480px) {
+  .success-message {
+    left: 12px;
+    right: 12px;
+    min-width: unset;
+    max-width: none;
+    top: 12px;
+    padding: 14px 18px;
+  }
+}
