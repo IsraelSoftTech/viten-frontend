@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { FaFileDownload, FaCalendarAlt, FaChartLine, FaShoppingCart, FaMoneyBillWave, FaCreditCard, FaExclamationTriangle, FaCheckCircle, FaBriefcase, FaCalendarDay, FaBox } from 'react-icons/fa';
 import { purchasesAPI, incomeAPI, debtAPI, expensesAPI, currencyAPI, configurationAPI } from '../api';
 import { formatCurrency as formatCurrencyUtil, fetchDefaultCurrency } from '../utils/currency';
@@ -41,26 +41,6 @@ const Report = () => {
     fetchConfiguration();
   }, []);
 
-  useEffect(() => {
-    if (defaultCurrency) {
-      generateReport();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateRange, defaultCurrency]);
-
-  useEffect(() => {
-    if (defaultCurrency && inventory.length > 0) {
-      generateDailyReport();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dailyDate, defaultCurrency, inventory]);
-
-  useEffect(() => {
-    if (activeTab === 'stocks') {
-      fetchStocksData();
-    }
-  }, [activeTab]);
-
   const fetchCurrencies = async () => {
     try {
       const response = await currencyAPI.getAllCurrencies();
@@ -91,7 +71,7 @@ const Report = () => {
     }
   };
 
-  const generateReport = async () => {
+  const generateReport = useCallback(async () => {
     setLoading(true);
     try {
       // Fetch all data
@@ -144,7 +124,7 @@ const Report = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateRange]);
 
   const fetchStocksData = async () => {
     try {
@@ -165,7 +145,7 @@ const Report = () => {
     }
   };
 
-  const generateDailyReport = async () => {
+  const generateDailyReport = useCallback(async () => {
     try {
       // Fetch all data
       const [purchasesRes, incomeRes, debtsRes] = await Promise.all([
@@ -251,7 +231,25 @@ const Report = () => {
     } catch (error) {
       console.error('Error generating daily report:', error);
     }
-  };
+  }, [dailyDate]);
+
+  useEffect(() => {
+    if (defaultCurrency) {
+      generateReport();
+    }
+  }, [dateRange, defaultCurrency, generateReport]);
+
+  useEffect(() => {
+    if (defaultCurrency && inventory.length > 0) {
+      generateDailyReport();
+    }
+  }, [dailyDate, defaultCurrency, inventory, generateDailyReport]);
+
+  useEffect(() => {
+    if (activeTab === 'stocks') {
+      fetchStocksData();
+    }
+  }, [activeTab]);
 
   // Calculate totals
   const inventoryTotal = inventory.reduce((sum, item) => sum + (parseFloat(item.total_amount) || 0), 0);

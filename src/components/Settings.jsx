@@ -1024,7 +1024,7 @@ const StockDeficiencyContent = () => {
     return 'normal';
   };
 
-  const [defaultCurrency, setDefaultCurrency] = useState(null);
+  const [, setDefaultCurrency] = useState(null);
 
   useEffect(() => {
     const loadCurrency = async () => {
