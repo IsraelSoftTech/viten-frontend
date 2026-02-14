@@ -16,6 +16,7 @@ import {
   FaDatabase,
   FaSlidersH,
   FaExclamationTriangle,
+  FaLock,
   FaTimes
 } from 'react-icons/fa';
 import './Sidebar.css';
@@ -48,6 +49,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: '/settings/currencies', label: 'Currencies', icon: FaDollarSign },
     { path: '/settings/backup', label: 'Backup', icon: FaDatabase },
     { path: '/settings/configuration', label: 'Configuration', icon: FaSlidersH },
+    { path: '/settings/pin-setting', label: 'PIN setting', icon: FaLock },
     { path: '/settings/stock-deficiency', label: 'Stock Deficiency', icon: FaExclamationTriangle },
   ];
 

@@ -48,6 +48,7 @@ function App() {
           <Route path="/settings/currencies" element={<Settings />} />
           <Route path="/settings/backup" element={<Settings />} />
           <Route path="/settings/configuration" element={<Settings />} />
+          <Route path="/settings/pin-setting" element={<Settings />} />
           <Route path="/settings/stock-deficiency" element={<Settings />} />
           <Route path="/users" element={<Users />} />
         </Route>

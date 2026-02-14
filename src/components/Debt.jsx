@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { FaPlus, FaEdit, FaTrash, FaTimes, FaSave, FaDownload } from 'react-icons/fa';
-import { debtAPI, purchasesAPI, configurationAPI } from '../api';
+import { FaPlus, FaEdit, FaTrash, FaTimes, FaSave, FaDownload, FaPrint } from 'react-icons/fa';
+import { debtAPI, debtRepaymentAPI, purchasesAPI, configurationAPI } from '../api';
 import { formatCurrency as formatCurrencyUtil, fetchDefaultCurrency } from '../utils/currency';
 import { generateReceipt } from '../utils/receiptGenerator';
 import SuccessMessage from './SuccessMessage';
@@ -21,21 +21,55 @@ const Debt = () => {
     date: '',
     name: '',
     pcs: '',
-    unit_price: '', // This will be inventory unit price (read-only)
-    selling_price: '', // This will be the actual selling price
+    unit_price: '',
+    selling_price: '',
     total_price: '',
     amount_payable_now: '',
     balance_owed: '',
-    customer_signature: '',
-    electronic_signature: '',
     client_name: '',
-    client_phone: ''
+    client_phone: '',
+    seller_name: ''
   });
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [printRecord, setPrintRecord] = useState(null);
+  const [receiptOpts, setReceiptOpts] = useState(null);
+  const [printReceiptType, setPrintReceiptType] = useState('debt'); // 'debt' | 'repayment'
+
+  const [activeTab, setActiveTab] = useState('new'); // 'new' | 'repay'
+  const [repayments, setRepayments] = useState([]);
+  const [loadingRepayments, setLoadingRepayments] = useState(false);
+  const [showRepayForm, setShowRepayForm] = useState(false);
+  const [repayReceiptNo, setRepayReceiptNo] = useState('');
+  const [repayDebtInfo, setRepayDebtInfo] = useState(null);
+  const [repayAmount, setRepayAmount] = useState('');
+  const [repayDate, setRepayDate] = useState(new Date().toISOString().split('T')[0]);
+  const [repaySellerName, setRepaySellerName] = useState('');
+  const [repaySubmitting, setRepaySubmitting] = useState(false);
+  const [editingRepayId, setEditingRepayId] = useState(null);
+  const [repayEditAmount, setRepayEditAmount] = useState('');
+  const [repayEditDate, setRepayEditDate] = useState('');
+  const [repayEditSeller, setRepayEditSeller] = useState('');
 
   useEffect(() => {
     fetchDebts();
     fetchInventory();
   }, []);
+
+  const fetchRepayments = async () => {
+    setLoadingRepayments(true);
+    try {
+      const res = await debtRepaymentAPI.getAll();
+      if (res.success) setRepayments(res.repayments || []);
+    } catch (e) {
+      setError('Failed to load repayments');
+    } finally {
+      setLoadingRepayments(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'repay') fetchRepayments();
+  }, [activeTab]);
 
   useEffect(() => {
     // Auto-calculate total price based on selling price and pieces
@@ -105,9 +139,9 @@ const Debt = () => {
       total_price: '',
       amount_payable_now: '',
       balance_owed: '',
-      description: '',
       client_name: '',
-      client_phone: ''
+      client_phone: '',
+      seller_name: ''
     });
   };
 
@@ -128,10 +162,9 @@ const Debt = () => {
       total_price: record.total_price || '',
       amount_payable_now: record.amount_payable_now || '',
       balance_owed: record.balance_owed || '',
-      customer_signature: record.customer_signature || '',
-      electronic_signature: record.electronic_signature || '',
       client_name: record.client_name || '',
-      client_phone: record.client_phone || ''
+      client_phone: record.client_phone || '',
+      seller_name: record.seller_name || ''
     });
   };
 
@@ -150,9 +183,9 @@ const Debt = () => {
       total_price: '',
       amount_payable_now: '',
       balance_owed: '',
-      description: '',
       client_name: '',
-      client_phone: ''
+      client_phone: '',
+      seller_name: ''
     });
   };
 
@@ -189,10 +222,9 @@ const Debt = () => {
       total_price: totalPrice,
       amount_payable_now: amountPayable,
       balance_owed: balanceOwed,
-      customer_signature: formData.customer_signature,
-      electronic_signature: formData.electronic_signature,
       client_name: formData.client_name,
-      client_phone: formData.client_phone
+      client_phone: formData.client_phone,
+      seller_name: formData.seller_name
     };
 
     try {
@@ -205,45 +237,7 @@ const Debt = () => {
       } else {
         response = await debtAPI.createDebt(submitData);
         if (response.success) {
-          setSuccessMessage('Debt record created successfully! Receipt generated.');
-          
-          // Generate receipt
-          try {
-            const configResponse = await configurationAPI.getConfiguration();
-            const appName = configResponse.success && configResponse.configuration 
-              ? configResponse.configuration.app_name 
-              : 'Shop Accountant';
-            const logoUrl = configResponse.success && configResponse.configuration 
-              ? configResponse.configuration.logo_url 
-              : null;
-            const location = configResponse.success && configResponse.configuration 
-              ? configResponse.configuration.location 
-              : null;
-            const items = configResponse.success && configResponse.configuration 
-              ? configResponse.configuration.items || []
-              : [];
-            
-            // Get the created record
-            const createdRecord = response.debt || {
-              id: response.debt?.id || Date.now(),
-              date: submitData.date,
-              name: submitData.name,
-              pcs: submitData.pcs,
-              unit_price: submitData.selling_price,
-              total_price: submitData.total_price,
-              amount_payable_now: submitData.amount_payable_now,
-              balance_owed: submitData.total_price - submitData.amount_payable_now,
-              customer_signature: submitData.customer_signature || '',
-              electronic_signature: submitData.electronic_signature || '',
-              client_name: submitData.client_name || '',
-              client_phone: submitData.client_phone || ''
-            };
-            
-            generateReceipt(createdRecord, 'debt', appName, logoUrl, location, items);
-          } catch (receiptError) {
-            console.error('Error generating receipt:', receiptError);
-            // Don't fail the operation if receipt generation fails
-          }
+          setSuccessMessage('Debt record created successfully!');
         }
       }
 
@@ -277,26 +271,177 @@ const Debt = () => {
     }
   };
 
+  const getReceiptOptions = async () => {
+    const configResponse = await configurationAPI.getConfiguration();
+    const c = configResponse.success && configResponse.configuration ? configResponse.configuration : {};
+    return {
+      appName: c.app_name || 'Shop Accountant',
+      location: c.location || null,
+      items: c.items || [],
+      thank_you_message: c.receipt_thank_you_message,
+      items_received_message: c.receipt_items_received_message
+    };
+  };
+
   const handleDownloadReceipt = async (record) => {
     try {
-      const configResponse = await configurationAPI.getConfiguration();
-      const appName = configResponse.success && configResponse.configuration 
-        ? configResponse.configuration.app_name 
-        : 'Shop Accountant';
-      const logoUrl = configResponse.success && configResponse.configuration 
-        ? configResponse.configuration.logo_url 
-        : null;
-      const location = configResponse.success && configResponse.configuration 
-        ? configResponse.configuration.location 
-        : null;
-      const items = configResponse.success && configResponse.configuration 
-        ? configResponse.configuration.items || []
-        : [];
-      
-      generateReceipt(record, 'debt', appName, logoUrl, location, items);
+      const opts = await getReceiptOptions();
+      generateReceipt(record, 'debt', {
+        ...opts,
+        seller_name: record.seller_name || '',
+        printerType: 'normal',
+        action: 'download'
+      });
     } catch (error) {
       console.error('Error generating receipt:', error);
       setError('Failed to generate receipt. Please try again.');
+    }
+  };
+
+  const handlePrintClick = async (record, type = 'debt') => {
+    try {
+      const opts = await getReceiptOptions();
+      setReceiptOpts({ ...opts, seller_name: record.seller_name || '' });
+      setPrintRecord(record);
+      setPrintReceiptType(type);
+      setShowPrintModal(true);
+    } catch (error) {
+      console.error('Error preparing print:', error);
+      setError('Failed to open print options.');
+    }
+  };
+
+  const handlePrintConfirm = (printerType) => {
+    if (!printRecord || !receiptOpts) return;
+    generateReceipt(printRecord, printReceiptType, {
+      ...receiptOpts,
+      printerType,
+      action: 'print'
+    });
+    setShowPrintModal(false);
+    setPrintRecord(null);
+    setReceiptOpts(null);
+  };
+
+  const handleRepayFetch = async () => {
+    const no = repayReceiptNo.trim().toUpperCase();
+    if (!no) {
+      setError('Enter debt receipt number (e.g. DEBT-000001)');
+      return;
+    }
+    setError('');
+    try {
+      const res = await debtAPI.getDebtByReceipt(no);
+      if (res.success) {
+        setRepayDebtInfo({ debt: res.debt, payments: res.payments || [], balance_owed: res.balance_owed });
+        setRepayAmount('');
+      } else {
+        setRepayDebtInfo(null);
+        setError(res.message || 'Debt not found');
+      }
+    } catch (e) {
+      setRepayDebtInfo(null);
+      setError('Failed to fetch debt');
+    }
+  };
+
+  const handleRepaySubmit = async (e) => {
+    e.preventDefault();
+    if (!repayDebtInfo || !repayDebtInfo.debt) return;
+    const amount = parseFloat(repayAmount);
+    if (isNaN(amount) || amount <= 0) {
+      setError('Enter a valid amount');
+      return;
+    }
+    if (amount > (repayDebtInfo.balance_owed || 0)) {
+      setError('Amount cannot exceed balance owed');
+      return;
+    }
+    setError('');
+    setRepaySubmitting(true);
+    try {
+      const res = await debtRepaymentAPI.create({
+        debt_id: repayDebtInfo.debt.id,
+        payment_date: repayDate,
+        amount,
+        seller_name: repaySellerName || undefined
+      });
+      if (res.success) {
+        setSuccessMessage('Repayment recorded.');
+        setShowRepayForm(false);
+        setRepayReceiptNo('');
+        setRepayDebtInfo(null);
+        setRepayAmount('');
+        setRepaySellerName('');
+        fetchRepayments();
+      } else {
+        setError(res.message || 'Failed to record repayment');
+      }
+    } catch (e) {
+      setError('Failed to record repayment');
+    } finally {
+      setRepaySubmitting(false);
+    }
+  };
+
+  const handleRepayDownload = async (record) => {
+    try {
+      const opts = await getReceiptOptions();
+      generateReceipt(record, 'repayment', {
+        ...opts,
+        seller_name: record.seller_name || '',
+        printerType: 'normal',
+        action: 'download'
+      });
+    } catch (e) {
+      setError('Failed to generate receipt');
+    }
+  };
+
+  const handleRepayPrint = (record) => handlePrintClick(record, 'repayment');
+
+  const handleRepayDelete = async (id) => {
+    if (!window.confirm('Delete this repayment? The debt balance will be increased by this amount.')) return;
+    setError('');
+    try {
+      const res = await debtRepaymentAPI.delete(id);
+      if (res.success) {
+        setSuccessMessage('Repayment deleted.');
+        fetchRepayments();
+      } else setError(res.message || 'Failed to delete');
+    } catch (e) {
+      setError('Failed to delete repayment');
+    }
+  };
+
+  const handleRepayEdit = (rec) => {
+    setEditingRepayId(rec.id);
+    setRepayEditAmount(String(rec.amount));
+    setRepayEditDate(rec.payment_date || new Date().toISOString().split('T')[0]);
+    setRepayEditSeller(rec.seller_name || '');
+  };
+
+  const handleRepayEditSave = async () => {
+    if (!editingRepayId) return;
+    const amount = parseFloat(repayEditAmount);
+    if (isNaN(amount) || amount <= 0) {
+      setError('Enter a valid amount');
+      return;
+    }
+    setError('');
+    try {
+      const res = await debtRepaymentAPI.update(editingRepayId, {
+        payment_date: repayEditDate,
+        amount,
+        seller_name: repayEditSeller !== undefined ? repayEditSeller : undefined
+      });
+      if (res.success) {
+        setSuccessMessage('Repayment updated.');
+        setEditingRepayId(null);
+        fetchRepayments();
+      } else setError(res.message || 'Failed to update');
+    } catch (e) {
+      setError('Failed to update repayment');
     }
   };
 
@@ -400,15 +545,65 @@ const Debt = () => {
       
       <div className="debt-header">
         <h1 className="debt-title">Debts Management</h1>
-        <button className="new-debt-btn" onClick={handleNewClick}>
-          <FaPlus className="btn-icon" />
-          New
+        {activeTab === 'new' && (
+          <button className="new-debt-btn" onClick={handleNewClick}>
+            <FaPlus className="btn-icon" />
+            New
+          </button>
+        )}
+      </div>
+
+      <div className="debt-tabs">
+        <button
+          type="button"
+          className={`debt-tab ${activeTab === 'new' ? 'active' : ''}`}
+          onClick={() => setActiveTab('new')}
+        >
+          New debt
+        </button>
+        <button
+          type="button"
+          className={`debt-tab ${activeTab === 'repay' ? 'active' : ''}`}
+          onClick={() => setActiveTab('repay')}
+        >
+          Debt Repay
         </button>
       </div>
 
       {error && <div className="error-message">{error}</div>}
 
-      {showForm && (
+      {showPrintModal && (
+        <div className="receipt-print-modal-overlay" onClick={() => { setShowPrintModal(false); setPrintRecord(null); setReceiptOpts(null); }}>
+          <div className="receipt-print-modal" onClick={(e) => e.stopPropagation()}>
+            <h3 className="receipt-print-modal-title">Select printer type</h3>
+            <div className="receipt-print-options">
+              <button
+                type="button"
+                className="receipt-print-option receipt-print-option-small"
+                onClick={() => handlePrintConfirm('small')}
+              >
+                <span className="receipt-print-option-icon">🖨️</span>
+                <span className="receipt-print-option-label">Small printer</span>
+                <span className="receipt-print-option-desc">58mm thermal (e.g. mobile Bluetooth)</span>
+              </button>
+              <button
+                type="button"
+                className="receipt-print-option receipt-print-option-normal"
+                onClick={() => handlePrintConfirm('normal')}
+              >
+                <span className="receipt-print-option-icon">🖨️</span>
+                <span className="receipt-print-option-label">Normal printer</span>
+                <span className="receipt-print-option-desc">A4 / Letter — Save as PDF or print</span>
+              </button>
+            </div>
+            <button type="button" className="receipt-print-cancel" onClick={() => { setShowPrintModal(false); setPrintRecord(null); setReceiptOpts(null); }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'new' && showForm && (
         <div className="debt-form-overlay">
           <div className="debt-form-container">
             <div className="form-header">
@@ -556,6 +751,7 @@ const Debt = () => {
                     id="client_name"
                     value={formData.client_name}
                     onChange={(e) => handleInputChange('client_name', e.target.value)}
+                    placeholder="Optional"
                   />
                 </div>
                 <div className="form-group">
@@ -565,29 +761,17 @@ const Debt = () => {
                     id="client_phone"
                     value={formData.client_phone}
                     onChange={(e) => handleInputChange('client_phone', e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="customer_signature">Customer Signature</label>
-                  <input
-                    type="text"
-                    id="customer_signature"
-                    value={formData.customer_signature}
-                    onChange={(e) => handleInputChange('customer_signature', e.target.value)}
-                    placeholder="Enter customer signature (optional)"
+                    placeholder="Optional"
                   />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="electronic_signature">Electronic Signature</label>
+                  <label htmlFor="seller_name">Seller's name</label>
                   <input
                     type="text"
-                    id="electronic_signature"
-                    value={formData.electronic_signature}
-                    onChange={(e) => handleInputChange('electronic_signature', e.target.value)}
-                    placeholder="Enter electronic signature (optional)"
+                    id="seller_name"
+                    value={formData.seller_name}
+                    onChange={(e) => handleInputChange('seller_name', e.target.value)}
+                    placeholder="Name shown on receipt (optional)"
                   />
                 </div>
               </div>
@@ -605,7 +789,7 @@ const Debt = () => {
         </div>
       )}
 
-      {!showForm && (
+      {activeTab === 'new' && !showForm && (
         <div className="debt-table-container">
           {loading ? (
             <div className="loading-message">Loading debt records...</div>
@@ -664,6 +848,13 @@ const Debt = () => {
                         >
                           <FaDownload />
                         </button>
+                        <button
+                          className="action-btn print-btn"
+                          onClick={() => handlePrintClick(record)}
+                          title="Print Receipt"
+                        >
+                          <FaPrint />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -671,6 +862,167 @@ const Debt = () => {
               </tbody>
             </table>
           )}
+        </div>
+      )}
+
+      {activeTab === 'repay' && (
+        <div className="debt-repay-section">
+          <div className="debt-repay-header">
+            <button type="button" className="new-debt-btn repay-action-btn" onClick={() => { setShowRepayForm(true); setRepayDebtInfo(null); setRepayReceiptNo(''); setRepayAmount(''); setRepayDate(new Date().toISOString().split('T')[0]); setRepaySellerName(''); setError(''); }}>
+              <FaPlus className="btn-icon" />
+              Repay
+            </button>
+          </div>
+
+          {showRepayForm && (
+            <div className="debt-form-overlay">
+              <div className="debt-form-container repay-form-container">
+                <div className="form-header">
+                  <h2>Record debt repayment</h2>
+                  <button type="button" className="close-btn" onClick={() => { setShowRepayForm(false); setRepayDebtInfo(null); setRepayReceiptNo(''); setError(''); }}>
+                    <FaTimes />
+                  </button>
+                </div>
+                <div className="repay-form-body">
+                  <div className="form-row">
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label>Receipt Number</label>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <input
+                          type="text"
+                          value={repayReceiptNo}
+                          onChange={(e) => setRepayReceiptNo(e.target.value.toUpperCase())}
+                          placeholder="e.g. DEBT-000001"
+                          className="config-input"
+                          style={{ flex: 1 }}
+                        />
+                        <button type="button" className="config-save-btn" onClick={handleRepayFetch}>
+                          Fetch
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  {repayDebtInfo && repayDebtInfo.debt && (
+                    <>
+                      <div className="repay-debt-info-box">
+                        <h4>Debt information</h4>
+                        <p><strong>Date recorded:</strong> {formatDate(repayDebtInfo.debt.date)}</p>
+                        <p><strong>Item:</strong> {repayDebtInfo.debt.name}</p>
+                        <p><strong>Balance left:</strong> {formatCurrency(repayDebtInfo.balance_owed)}</p>
+                        {repayDebtInfo.payments && repayDebtInfo.payments.length > 0 && (
+                          <div className="repay-payments-list">
+                            <strong>Amount paid (previous payments):</strong>
+                            <ul>
+                              {repayDebtInfo.payments.map((p, i) => (
+                                <li key={i}>{formatDate(p.payment_date)} — {formatCurrency(p.amount)}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                      <form onSubmit={handleRepaySubmit}>
+                        <div className="form-row">
+                          <div className="form-group">
+                            <label>Payment date *</label>
+                            <input
+                              type="date"
+                              value={repayDate}
+                              onChange={(e) => setRepayDate(e.target.value)}
+                              required
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label>Amount payable now *</label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={repayAmount}
+                              onChange={(e) => setRepayAmount(e.target.value)}
+                              placeholder="Enter amount"
+                              required
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label>Seller's name</label>
+                            <input
+                              type="text"
+                              value={repaySellerName}
+                              onChange={(e) => setRepaySellerName(e.target.value)}
+                              placeholder="Optional"
+                            />
+                          </div>
+                        </div>
+                        <div className="form-actions">
+                          <button type="button" className="cancel-btn" onClick={() => { setShowRepayForm(false); setRepayDebtInfo(null); }}>Cancel</button>
+                          <button type="submit" className="submit-btn" disabled={repaySubmitting}>
+                            <FaSave className="btn-icon" />
+                            {repaySubmitting ? 'Recording...' : 'Record repayment'}
+                          </button>
+                        </div>
+                      </form>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="debt-repay-table-wrap">
+            {loadingRepayments ? (
+              <div className="loading-message">Loading repayments...</div>
+            ) : repayments.length === 0 ? (
+              <div className="no-records">No repayment records. Click &quot;Repay&quot; to record a payment against a debt.</div>
+            ) : (
+              <table className="debt-table">
+                <thead>
+                  <tr>
+                    <th>Receipt No</th>
+                    <th>Payment date</th>
+                    <th>Debt ref</th>
+                    <th>Item</th>
+                    <th>Amount</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {repayments.map((rec) => (
+                    <tr key={rec.id}>
+                      {editingRepayId === rec.id ? (
+                        <>
+                          <td>{rec.receipt_number || 'REPAY-' + String(rec.id).padStart(6, '0')}</td>
+                          <td><input type="date" value={repayEditDate} onChange={(e) => setRepayEditDate(e.target.value)} className="inline-edit-input" /></td>
+                          <td>DEBT-{String(rec.debt_id).padStart(6, '0')}</td>
+                          <td>{rec.item_name}</td>
+                          <td><input type="number" min="0" step="0.01" value={repayEditAmount} onChange={(e) => setRepayEditAmount(e.target.value)} className="inline-edit-input" style={{ width: 90 }} /></td>
+                          <td>
+                            <button type="button" className="action-btn edit-btn" onClick={handleRepayEditSave} title="Save"><FaSave /></button>
+                            <button type="button" className="action-btn delete-btn" onClick={() => setEditingRepayId(null)} title="Cancel"><FaTimes /></button>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td>{rec.receipt_number || 'REPAY-' + String(rec.id).padStart(6, '0')}</td>
+                          <td>{formatDate(rec.payment_date)}</td>
+                          <td>DEBT-{String(rec.debt_id).padStart(6, '0')}</td>
+                          <td>{rec.item_name}</td>
+                          <td className="total-price-cell">{formatCurrency(rec.amount)}</td>
+                          <td>
+                            <div className="action-buttons">
+                              <button className="action-btn edit-btn" onClick={() => handleRepayEdit(rec)} title="Edit"><FaEdit /></button>
+                              <button className="action-btn delete-btn" onClick={() => handleRepayDelete(rec.id)} title="Delete"><FaTrash /></button>
+                              <button className="action-btn download-btn" onClick={() => handleRepayDownload(rec)} title="Download receipt"><FaDownload /></button>
+                              <button className="action-btn print-btn" onClick={() => handleRepayPrint(rec)} title="Print receipt"><FaPrint /></button>
+                            </div>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       )}
     </div>

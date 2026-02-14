@@ -99,10 +99,151 @@
   font-family: 'Poppins', sans-serif;
 }
 
+.config-label-inline {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333333;
+  font-family: 'Poppins', sans-serif;
+}
+
+.config-receipt-messages-group {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+}
+
+.config-textarea-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.config-textarea {
+  min-height: 80px;
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  resize: vertical;
+  font-family: 'Poppins', sans-serif;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  transition: border-color 0.2s ease;
+}
+
+.config-textarea:focus {
+  outline: none;
+  border-color: #FF6B35;
+}
+
+.config-textarea::placeholder {
+  color: #999;
+}
+
 .config-input-group {
   display: flex;
   gap: 12px;
   align-items: center;
+}
+
+.pin-status-text {
+  color: #666666;
+  font-size: 14px;
+  font-family: 'Poppins', sans-serif;
+}
+
+/* PIN setting: current PIN card (editable / trashable) */
+.pin-config-section .pin-current-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #eef1f5 100%);
+  border: 1px solid #e0e4e8;
+  border-radius: 12px;
+  border-left: 4px solid #FF6B35;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+.pin-current-display {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.pin-current-icon {
+  font-size: 24px;
+  color: #FF6B35;
+  flex-shrink: 0;
+}
+.pin-current-masked {
+  font-size: 18px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  letter-spacing: 3px;
+  color: #333;
+  font-weight: 600;
+}
+.pin-current-label {
+  font-size: 14px;
+  color: #666;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 500;
+}
+.pin-current-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.pin-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.pin-action-btn .pin-action-icon {
+  font-size: 16px;
+}
+.pin-action-remove {
+  background: #ffebee;
+  color: #c62828;
+}
+.pin-action-remove:hover:not(:disabled) {
+  background: #ffcdd2;
+  transform: translateY(-1px);
+}
+.pin-action-remove:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.pin-form-row {
+  margin-top: 12px;
+}
+.pin-form-row .pin-input-group {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.pin-set-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.pin-set-btn .btn-icon-inline {
+  font-size: 14px;
+}
+.pin-hint-icon {
+  margin-right: 6px;
+  vertical-align: middle;
+  color: #666;
+  font-size: 14px;
 }
 
 .config-input {

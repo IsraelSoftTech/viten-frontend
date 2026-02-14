@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { FaPlus, FaEdit, FaCheck, FaTrash, FaTimes } from 'react-icons/fa';
-import { goalsAPI } from '../api';
+import { FaPlus, FaEdit, FaCheck, FaTrash, FaTimes, FaLock } from 'react-icons/fa';
+import { goalsAPI, configurationAPI } from '../api';
+import SuccessMessage from './SuccessMessage';
 import './Goal.css';
+
+const GOAL_PIN_SESSION_KEY = 'goalPinUnlocked';
 
 const TAB_ALL = 'all';
 const TAB_ACTIVE = 'active';
@@ -24,6 +27,14 @@ const Goal = () => {
     content: ''
   });
   const [saving, setSaving] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+
+  const [pinCheckDone, setPinCheckDone] = useState(false);
+  const [pinRequired, setPinRequired] = useState(false);
+  const [pinUnlocked, setPinUnlocked] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState('');
+  const [pinVerifying, setPinVerifying] = useState(false);
 
   const fetchGoals = async () => {
     setLoading(true);
@@ -43,8 +54,57 @@ const Goal = () => {
   };
 
   useEffect(() => {
-    fetchGoals();
+    const checkPin = async () => {
+      try {
+        const res = await configurationAPI.getGoalPinStatus();
+        if (res.success && res.hasPin) {
+          setPinRequired(true);
+          if (sessionStorage.getItem(GOAL_PIN_SESSION_KEY) === '1') {
+            setPinUnlocked(true);
+            fetchGoals();
+          }
+        } else {
+          setPinUnlocked(true);
+          fetchGoals();
+        }
+      } catch (e) {
+        setPinUnlocked(true);
+        fetchGoals();
+      } finally {
+        setPinCheckDone(true);
+      }
+    };
+    checkPin();
+    return () => {
+      sessionStorage.removeItem(GOAL_PIN_SESSION_KEY);
+    };
   }, []);
+
+  const handlePinSubmit = async (e) => {
+    e.preventDefault();
+    setPinError('');
+    if (!pinInput.trim()) {
+      setPinError('Enter PIN');
+      return;
+    }
+    setPinVerifying(true);
+    try {
+      const res = await configurationAPI.verifyGoalPin(pinInput);
+      if (res.success && res.valid) {
+        sessionStorage.setItem(GOAL_PIN_SESSION_KEY, '1');
+        setPinUnlocked(true);
+        setPinInput('');
+        fetchGoals();
+      } else {
+        setPinError('Incorrect PIN');
+        setPinInput('');
+      }
+    } catch (e) {
+      setPinError('Verification failed');
+    } finally {
+      setPinVerifying(false);
+    }
+  };
 
   const filteredGoals = () => {
     if (activeTab === TAB_ALL) return goals;
@@ -91,6 +151,7 @@ const Goal = () => {
         const res = await goalsAPI.update(editingId, form);
         if (res.success) {
           setGoals((prev) => prev.map((g) => (g.id === editingId ? res.goal : g)));
+          setSuccessMessage('Goal updated successfully!');
           closeNotebook();
         } else {
           setError(res.message || 'Update failed');
@@ -99,6 +160,7 @@ const Goal = () => {
         const res = await goalsAPI.create(form);
         if (res.success) {
           setGoals((prev) => [res.goal, ...prev]);
+          setSuccessMessage('Goal created successfully!');
           closeNotebook();
         } else {
           setError(res.message || 'Create failed');
@@ -116,6 +178,7 @@ const Goal = () => {
       const res = await goalsAPI.setStatus(id, status);
       if (res.success) {
         setGoals((prev) => prev.map((g) => (g.id === id ? res.goal : g)));
+        setSuccessMessage(status === 'accomplished' ? 'Goal marked as accomplished!' : 'Goal moved to trash.');
       }
     } catch (e) {
       setError('Failed to update goal');
@@ -128,6 +191,7 @@ const Goal = () => {
       const res = await goalsAPI.delete(id);
       if (res.success) {
         setGoals((prev) => prev.filter((g) => g.id !== id));
+        setSuccessMessage('Goal deleted permanently.');
       } else {
         setError(res.message || 'Delete failed');
       }
@@ -137,6 +201,51 @@ const Goal = () => {
   };
 
   const list = filteredGoals();
+
+  if (!pinCheckDone) {
+    return (
+      <div className="goal-container">
+        <div className="goal-loading">Checking access...</div>
+      </div>
+    );
+  }
+
+  if (pinRequired && !pinUnlocked) {
+    return (
+      <div className="goal-container">
+        <div className="goal-pin-overlay">
+          <div className="goal-pin-box">
+            <div className="goal-pin-header">
+              <FaLock className="goal-pin-icon" />
+              <h2 className="goal-pin-title">Goal is protected</h2>
+              <p className="goal-pin-desc">Enter the PIN to access the Goal component.</p>
+            </div>
+            <form onSubmit={handlePinSubmit} className="goal-pin-form">
+              <input
+                type="password"
+                value={pinInput}
+                onChange={(e) => { setPinInput(e.target.value); setPinError(''); }}
+                className="goal-pin-input"
+                placeholder="Enter PIN"
+                autoFocus
+                autoComplete="off"
+                maxLength={20}
+                disabled={pinVerifying}
+              />
+              {pinError && <div className="goal-pin-error">{pinError}</div>}
+              <button
+                type="submit"
+                className="goal-pin-submit"
+                disabled={pinVerifying || !pinInput.trim()}
+              >
+                {pinVerifying ? 'Verifying...' : 'Unlock'}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="goal-container">
@@ -215,8 +324,9 @@ const Goal = () => {
                     type="button"
                     className="goal-action-btn delete-permanent"
                     onClick={() => handleDeletePermanent(goal.id)}
+                    aria-label="Delete permanently"
                   >
-                    <FaTrash /> Delete permanently
+                    <FaTrash />
                   </button>
                 ) : (
                   <>
@@ -224,16 +334,18 @@ const Goal = () => {
                       type="button"
                       className="goal-action-btn edit"
                       onClick={() => openEdit(goal)}
+                      aria-label="Edit"
                     >
-                      <FaEdit /> Edit
+                      <FaEdit />
                     </button>
                     {goal.status === 'active' && (
                       <button
                         type="button"
                         className="goal-action-btn accomplish"
                         onClick={() => handleSetStatus(goal.id, 'accomplished')}
+                        aria-label="Mark as accomplished"
                       >
-                        <FaCheck /> Accomplished
+                        <FaCheck />
                       </button>
                     )}
                     {goal.status !== 'trashed' && (
@@ -241,8 +353,9 @@ const Goal = () => {
                         type="button"
                         className="goal-action-btn trash"
                         onClick={() => handleSetStatus(goal.id, 'trashed')}
+                        aria-label="Move to trash"
                       >
-                        <FaTrash /> Trash
+                        <FaTrash />
                       </button>
                     )}
                   </>
@@ -325,6 +438,13 @@ const Goal = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {successMessage && (
+        <SuccessMessage
+          message={successMessage}
+          onClose={() => setSuccessMessage('')}
+        />
       )}
     </div>
   );

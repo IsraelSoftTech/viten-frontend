@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FaFileDownload, FaCalendarAlt, FaChartLine, FaShoppingCart, FaMoneyBillWave, FaCreditCard, FaExclamationTriangle, FaCheckCircle, FaBriefcase, FaCalendarDay, FaBox } from 'react-icons/fa';
+import { FaFileDownload, FaPrint, FaCalendarAlt, FaChartLine, FaShoppingCart, FaMoneyBillWave, FaCreditCard, FaExclamationTriangle, FaCheckCircle, FaBriefcase, FaCalendarDay, FaBox } from 'react-icons/fa';
 import { purchasesAPI, incomeAPI, debtAPI, expensesAPI, currencyAPI, configurationAPI } from '../api';
 import { formatCurrency as formatCurrencyUtil, fetchDefaultCurrency } from '../utils/currency';
 import jsPDF from 'jspdf';
@@ -34,6 +34,8 @@ const Report = () => {
   const [activeTab, setActiveTab] = useState('daily'); // 'daily', 'executive', or 'stocks'
   const [dailyDate, setDailyDate] = useState(new Date().toISOString().split('T')[0]); // Today's date
   const [stocksData, setStocksData] = useState([]);
+  const [showReportPrintModal, setShowReportPrintModal] = useState(false);
+  const [reportPrintKind, setReportPrintKind] = useState(null); // 'executive' | 'daily' | 'stocks'
 
   useEffect(() => {
     fetchCurrencies();
@@ -344,19 +346,154 @@ const Report = () => {
     return `${dayName} ${day}/${month}/${year}`;
   };
 
-  const handleGeneratePDF = () => {
-    generateExecutiveReportPDF();
+  const handleOpenReportPrintModal = (kind) => {
+    setReportPrintKind(kind);
+    setShowReportPrintModal(true);
   };
 
-  const handleGenerateDailyPDF = () => {
-    generateDailyReportPDF();
+  const handleReportPrintConfirm = (printerType) => {
+    if (reportPrintKind === 'executive') generateExecutiveReportPDF({ printerType, action: 'print' });
+    else if (reportPrintKind === 'daily') generateDailyReportPDF({ printerType, action: 'print' });
+    else if (reportPrintKind === 'stocks') generateStocksReportPDF({ printerType, action: 'print' });
+    setShowReportPrintModal(false);
+    setReportPrintKind(null);
   };
 
-  const handleGenerateStocksPDF = () => {
-    generateStocksReportPDF();
-  };
+  const generateExecutiveReportPDF = (options = {}) => {
+    const { printerType = 'normal', action = 'download' } = options;
 
-  const generateExecutiveReportPDF = () => {
+    // ----- 58mm small printer: full report in small tables (B&W, no overlay) -----
+    if (printerType === 'small') {
+      const doc = new jsPDF({ unit: 'mm', format: [58, 297] });
+      const W = 58, marginH = 3, topMargin = 5, contentW = W - marginH * 2, maxY = 290;
+      let y = topMargin;
+      doc.setDrawColor(0, 0, 0);
+      doc.setTextColor(0, 0, 0);
+      doc.setFillColor(255, 255, 255);
+      doc.setLineWidth(0.2);
+      const fmtDate = (d) => {
+        if (!d) return 'N/A';
+        const dt = new Date(d);
+        return `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}/${dt.getFullYear()}`;
+      };
+      const fmt = (amount) => (amount == null || isNaN(amount) ? '0' : Math.round(amount).toLocaleString());
+      const addPageIfNeeded = (need) => {
+        if (y + need > maxY) {
+          doc.addPage([58, 297]);
+          y = topMargin;
+          doc.setFontSize(5);
+          doc.setFont('helvetica', 'italic');
+          doc.text(appName + ' - Executive (cont.)', W / 2, y, { align: 'center' });
+          y += 4;
+        }
+      };
+      const drawSmallTable = (title, headers, rows, colWidths) => {
+        addPageIfNeeded(8 + rows.length * 3);
+        const rowH = 3;
+        doc.setFillColor(240, 240, 240);
+        doc.rect(marginH, y, contentW, 4, 'F');
+        doc.setFontSize(5);
+        doc.setFont('helvetica', 'bold');
+        doc.text(title, marginH + 1, y + 2.5);
+        y += 4;
+        doc.rect(marginH, y, contentW, rowH, 'F');
+        doc.setDrawColor(0, 0, 0);
+        doc.rect(marginH, y, contentW, rowH);
+        let x = marginH;
+        headers.forEach((h, i) => {
+          if (i > 0) doc.line(x, y, x, y + rowH);
+          doc.text(String(h).substring(0, 8), x + 0.5, y + 2);
+          x += colWidths[i];
+        });
+        y += rowH;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(4);
+        rows.forEach((row) => {
+          addPageIfNeeded(rowH);
+          doc.setDrawColor(0, 0, 0);
+          doc.rect(marginH, y, contentW, rowH);
+          x = marginH;
+          row.forEach((cell, i) => {
+            if (i > 0) doc.line(x, y, x, y + rowH);
+            const txt = String(cell ?? '').substring(0, colWidths[i] < 8 ? 4 : colWidths[i] < 12 ? 8 : 14);
+            doc.text(txt, x + 0.5, y + 2);
+            x += colWidths[i];
+          });
+          y += rowH;
+        });
+        y += 2;
+      };
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'bold');
+      doc.text(appName.toUpperCase(), W / 2, y, { align: 'center' });
+      y += 4;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(5);
+      doc.text('EXECUTIVE REPORT', W / 2, y, { align: 'center' });
+      y += 3;
+      doc.text(`${fmtDate(dateRange.startDate)} - ${fmtDate(dateRange.endDate)}`, W / 2, y, { align: 'center' });
+      y += 5;
+      doc.line(marginH, y, W - marginH, y);
+      y += 3;
+      const invT = inventory.reduce((s, i) => s + (parseFloat(i.total_amount) || 0), 0);
+      const salT = sales.reduce((s, r) => s + (parseFloat(r.total_price) || 0), 0);
+      const debT = debts.reduce((s, r) => s + (parseFloat(r.total_price) || 0), 0);
+      const debPaid = debts.reduce((s, r) => s + (parseFloat(r.amount_payable_now) || 0), 0);
+      const expT = expenses.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+      const debOwed = debT - debPaid;
+      const calcGL = () => {
+        const itemProfitLoss = {};
+        [...sales, ...debts].forEach(record => {
+          const itemName = record.name;
+          const invItem = inventory.find(inv => inv.name === itemName);
+          const costPrice = invItem ? parseFloat(invItem.unit_price) || 0 : 0;
+          const sellingPrice = parseFloat(record.unit_price) || 0;
+          const pcsSold = parseInt(record.pcs) || 0;
+          const totalCost = costPrice * pcsSold;
+          const totalRevenue = sellingPrice * pcsSold;
+          const profitLoss = totalRevenue - totalCost;
+          if (!itemProfitLoss[itemName]) itemProfitLoss[itemName] = { name: itemName, costPrice, sellingPrice, pcsSold: 0, totalCost: 0, totalRevenue: 0, profitLoss: 0 };
+          itemProfitLoss[itemName].pcsSold += pcsSold;
+          itemProfitLoss[itemName].totalCost += totalCost;
+          itemProfitLoss[itemName].totalRevenue += totalRevenue;
+          itemProfitLoss[itemName].profitLoss += profitLoss;
+        });
+        return Object.values(itemProfitLoss);
+      };
+      const gainLossData58 = calcGL();
+      const totalGainLoss = gainLossData58.reduce((sum, item) => sum + (item.profitLoss || 0), 0);
+      const overallTotal = inventoryTotal + salesTotal + debOwed + expT;
+      const invRows = inventory.map(i => [(i.name || 'N/A').substring(0, 14), String(i.pcs || 0), fmt(parseFloat(i.unit_price)), fmt(parseFloat(i.total_amount))]);
+      invRows.push(['TOTAL', '', '', fmt(invT)]);
+      drawSmallTable('INVENTORY', ['Item', 'Pcs', 'Unit', 'Total'], invRows, [20, 5, 10, 15]);
+      const salesRows = sales.map(s => [fmtDate(s.date).substring(0, 5), (s.name || 'N/A').substring(0, 8), String(s.pcs || 0), fmt(parseFloat(s.unit_price)), fmt(parseFloat(s.total_price))]);
+      salesRows.push(['TOTAL', '', '', '', fmt(salT)]);
+      drawSmallTable('SALES', ['Date', 'Item', 'Pcs', 'Unit', 'Tot'], salesRows, [10, 12, 4, 8, 16]);
+      const debtsRows = debts.map(d => [fmtDate(d.date).substring(0, 5), (d.name || 'N/A').substring(0, 8), String(d.pcs || 0), fmt(parseFloat(d.total_price)), fmt(parseFloat(d.amount_payable_now)), fmt(parseFloat(d.balance_owed))]);
+      debtsRows.push(['TOTAL', '', '', fmt(debT), fmt(debPaid), fmt(debOwed)]);
+      drawSmallTable('DEBTS', ['Date', 'Item', 'Pcs', 'Tot', 'Paid', 'Owed'], debtsRows, [8, 10, 4, 8, 8, 12]);
+      const expRows = expenses.map(e => [fmtDate(e.date).substring(0, 5), (e.category || '-').substring(0, 6), (e.description || '-').substring(0, 12), fmt(parseFloat(e.amount))]);
+      expRows.push(['TOTAL', '', '', fmt(expT)]);
+      drawSmallTable('EXPENSES', ['Date', 'Cat', 'Desc', 'Amt'], expRows, [10, 8, 16, 16]);
+      const summaryRows = [['Total Inventory', fmt(invT)], ['Total Sales', fmt(salT)], ['Debts Owed', fmt(debOwed)], ['Total Expenses', fmt(expT)], ['Gain/Loss', fmt(totalGainLoss)], ['Overall Total', fmt(overallTotal)]];
+      drawSmallTable('SUMMARY', ['Head', 'Amount'], summaryRows, [28, 22]);
+      const glRows = gainLossData58.map(item => [(item.name || 'N/A').substring(0, 12), fmt(item.costPrice), String(item.pcsSold), fmt(item.sellingPrice), fmt(item.profitLoss)]);
+      drawSmallTable('GAIN/LOSS', ['Item', 'Cost', 'Pcs', 'Sell', 'G/L'], glRows, [16, 8, 4, 8, 14]);
+      addPageIfNeeded(6);
+      doc.setFontSize(4);
+      doc.setFont('helvetica', 'italic');
+      doc.text('Generated by ' + appName, W / 2, y, { align: 'center' });
+      const filename = `${appName.replace(/\s+/g, '-')}-Executive-58mm.pdf`;
+      if (action === 'print') {
+        const blob = doc.output('blob');
+        const url = URL.createObjectURL(blob);
+        const w = window.open(url, '_blank', 'width=400,height=600');
+        if (w) w.onload = () => setTimeout(() => w.print(), 400);
+        setTimeout(() => URL.revokeObjectURL(url), 15000);
+      } else doc.save(filename);
+      return;
+    }
+
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
@@ -453,19 +590,14 @@ const Report = () => {
     // Header function to be called on each page
     const drawHeader = () => {
       const headerHeight = 22; // Increased to accommodate multi-line dates
-      doc.setFillColor(173, 216, 230); // Light blue (lighter)
+      doc.setFillColor(240, 240, 240);
       doc.rect(startX, currentY, pageWidth - (margin * 2), headerHeight, 'F');
-      
-      // Professional accent bar (lighter blue)
-      doc.setFillColor(135, 206, 235); // Skyblue (lighter accent)
+      doc.setFillColor(220, 220, 220);
       doc.rect(startX, currentY, pageWidth - (margin * 2), 2.5, 'F');
-      
-      // Decorative accent (professional grey)
-      doc.setFillColor(128, 128, 128); // Professional grey
+      doc.setFillColor(180, 180, 180);
       doc.rect(startX + pageWidth - (margin * 2) - 35, currentY, 35, headerHeight, 'F');
 
-    // App Name / Company Name (dark text on light blue)
-    doc.setTextColor(50, 50, 50);
+    doc.setTextColor(0, 0, 0);
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.text(appName.toUpperCase(), startX + 6, currentY + 7);
@@ -475,7 +607,6 @@ const Report = () => {
     doc.setFont('helvetica', 'normal');
     doc.text('EXECUTIVE REPORT', startX + 6, currentY + 13);
 
-    // Date Range (Top Right - white text on grey accent, bold)
     doc.setFontSize(7);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(255, 255, 255);
@@ -542,11 +673,10 @@ const Report = () => {
         doc.setLineWidth(0.3);
         doc.line(startX, footerY, pageWidth - margin, footerY);
         doc.setFontSize(7);
-        doc.setTextColor(150, 150, 150);
+        doc.setTextColor(100, 100, 100);
         doc.setFont('helvetica', 'italic');
         doc.text('Generated by ' + appName, startX + (pageWidth - margin * 2) / 2, footerY + 5, { align: 'center' });
         
-        // Add new page and redraw header
         doc.addPage();
         currentY = margin;
         drawHeader();
@@ -555,42 +685,32 @@ const Report = () => {
       return false;
     };
 
-    // Helper function to draw table with optional color for last row and page break management
     const drawTable = (headers, rows, startX, startY, colWidths, title = null, highlightLastRow = false, highlightColor = null) => {
       let y = startY;
       const rowHeight = 5;
       const titleHeight = title ? 5 : 0;
       const headerHeight = 5;
       const estimatedTableHeight = titleHeight + headerHeight + (rows.length * rowHeight);
-      
-      // Calculate proportional column widths to fit the consistent table width
       const totalColWidths = colWidths.reduce((a, b) => a + b, 0);
       const proportionalColWidths = colWidths.map(width => (width / totalColWidths) * tableWidth);
-      
-      // Check if we need a new page before starting the table
       if (y !== margin && checkPageBreak(estimatedTableHeight + 5)) {
         y = currentY;
       }
-      
       if (title) {
-        // Section title
-        doc.setFillColor(173, 216, 230); // Light blue (lighter)
+        doc.setFillColor(240, 240, 240);
         doc.rect(startX, y, tableWidth, 5, 'F');
-        doc.setTextColor(50, 50, 50); // Dark text on light background
+        doc.setTextColor(0, 0, 0);
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
         doc.text(title, startX + 2, y + 3.5);
         y += 5;
       }
 
-      // Table header
-      doc.setFillColor(173, 216, 230); // Light blue (lighter)
+      doc.setFillColor(240, 240, 240);
       doc.rect(startX, y, tableWidth, rowHeight, 'F');
-      doc.setTextColor(50, 50, 50); // Dark text on light background
+      doc.setTextColor(0, 0, 0);
       doc.setFontSize(8);
       doc.setFont('helvetica', 'bold');
-      
-      // Draw header borders
       doc.setDrawColor(200, 200, 200);
       doc.setLineWidth(0.1);
       doc.rect(startX, y, tableWidth, rowHeight);
@@ -618,7 +738,7 @@ const Report = () => {
           doc.setLineWidth(0.3);
           doc.line(startX, footerY, pageWidth - margin, footerY);
           doc.setFontSize(7);
-          doc.setTextColor(150, 150, 150);
+          doc.setTextColor(100, 100, 100);
           doc.setFont('helvetica', 'italic');
           doc.text('Generated by ' + appName, startX + (pageWidth - margin * 2) / 2, footerY + 5, { align: 'center' });
           
@@ -630,7 +750,7 @@ const Report = () => {
           
           // Redraw title if exists
           if (title) {
-            doc.setFillColor(135, 206, 235);
+            doc.setFillColor(220, 220, 220);
             doc.rect(startX, y, tableWidth, 5, 'F');
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(8);
@@ -640,7 +760,7 @@ const Report = () => {
           }
           
           // Redraw header
-          doc.setFillColor(70, 130, 180);
+          doc.setFillColor(100, 100, 100);
           doc.rect(startX, y, tableWidth, rowHeight, 'F');
           doc.setTextColor(255, 255, 255);
           doc.setFontSize(6);
@@ -667,13 +787,13 @@ const Report = () => {
         if (isHighlighted && highlightColor) {
           doc.setFillColor(200, 220, 240); // Lighter blue for totals
           doc.rect(startX, y, tableWidth, rowHeight, 'F');
-          doc.setTextColor(50, 50, 50);
+          doc.setTextColor(0, 0, 0);
         } else if (rowIndex % 2 === 0 && !isHighlighted) {
           doc.setFillColor(252, 252, 252); // Very light grey
           doc.rect(startX, y, tableWidth, rowHeight, 'F');
-          doc.setTextColor(50, 50, 50);
+          doc.setTextColor(0, 0, 0);
         } else if (!isHighlighted) {
-          doc.setTextColor(50, 50, 50);
+          doc.setTextColor(0, 0, 0);
         }
         
         // Draw borders
@@ -847,18 +967,18 @@ const Report = () => {
     }
     
     // Title
-    doc.setFillColor(173, 216, 230); // Light blue (lighter)
+    doc.setFillColor(240, 240, 240); // Light blue (lighter)
     doc.rect(startX, gainLossY, tableWidth, 5, 'F');
-    doc.setTextColor(50, 50, 50); // Dark text on light background
+    doc.setTextColor(0, 0, 0); // Dark text on light background
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.text('GAIN/LOSS ANALYSIS', startX + 2, gainLossY + 3.5);
     gainLossY += 5;
     
     // Header
-    doc.setFillColor(173, 216, 230); // Light blue (lighter)
+    doc.setFillColor(240, 240, 240); // Light blue (lighter)
     doc.rect(startX, gainLossY, tableWidth, rowHeight, 'F');
-    doc.setTextColor(50, 50, 50); // Dark text on light background
+    doc.setTextColor(0, 0, 0); // Dark text on light background
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
     doc.setDrawColor(200, 200, 200);
@@ -885,7 +1005,7 @@ const Report = () => {
         doc.setLineWidth(0.3);
         doc.line(startX, footerY, pageWidth - margin, footerY);
         doc.setFontSize(7);
-        doc.setTextColor(150, 150, 150);
+        doc.setTextColor(100, 100, 100);
         doc.setFont('helvetica', 'italic');
         doc.text('Generated by ' + appName, startX + (pageWidth - margin * 2) / 2, footerY + 5, { align: 'center' });
         
@@ -896,18 +1016,18 @@ const Report = () => {
         gainLossY = currentY;
         
         // Redraw title
-        doc.setFillColor(173, 216, 230); // Light blue (lighter)
+        doc.setFillColor(240, 240, 240); // Light blue (lighter)
         doc.rect(startX, gainLossY, tableWidth, 5, 'F');
-        doc.setTextColor(50, 50, 50); // Dark text on light background
+        doc.setTextColor(0, 0, 0); // Dark text on light background
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
         doc.text('GAIN/LOSS ANALYSIS (continued)', startX + 2, gainLossY + 3.5);
         gainLossY += 5;
         
         // Redraw header
-        doc.setFillColor(173, 216, 230); // Light blue (lighter)
+        doc.setFillColor(240, 240, 240); // Light blue (lighter)
         doc.rect(startX, gainLossY, tableWidth, rowHeight, 'F');
-        doc.setTextColor(50, 50, 50); // Dark text on light background
+        doc.setTextColor(0, 0, 0); // Dark text on light background
         doc.setFontSize(7);
         doc.setFont('helvetica', 'bold');
         doc.setDrawColor(200, 200, 200);
@@ -943,7 +1063,7 @@ const Report = () => {
         if (colIndex === 4) {
           doc.setTextColor(isLoss ? 244 : 76, isLoss ? 67 : 175, isLoss ? 54 : 80);
         } else {
-          doc.setTextColor(50, 50, 50);
+          doc.setTextColor(0, 0, 0);
         }
         
         // Ensure text fits within cell boundaries - clip to prevent overflow
@@ -977,7 +1097,7 @@ const Report = () => {
       }
       
       // Title (no background highlight)
-      doc.setTextColor(50, 50, 50);
+      doc.setTextColor(0, 0, 0);
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
       doc.text('MOST SOLD ITEMS', startX + 2, currentY + 3.5);
@@ -986,7 +1106,7 @@ const Report = () => {
       // Items as text
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
-      doc.setTextColor(50, 50, 50);
+      doc.setTextColor(0, 0, 0);
       
       mostSoldItems.slice(0, 10).forEach((item) => {
         // Format: "Item Name: X Pcs (AmountFCFA)"
@@ -1031,7 +1151,7 @@ const Report = () => {
       }
       
       // Title (no background highlight)
-      doc.setTextColor(50, 50, 50);
+      doc.setTextColor(0, 0, 0);
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
       doc.text('LEAST SOLD ITEMS', startX + 2, currentY + 3.5);
@@ -1040,7 +1160,7 @@ const Report = () => {
       // Items as text
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
-      doc.setTextColor(50, 50, 50);
+      doc.setTextColor(0, 0, 0);
       
       leastSoldItems.forEach((item) => {
         // Format: "Item Name: X Pcs (AmountFCFA)"
@@ -1076,18 +1196,139 @@ const Report = () => {
     doc.line(startX, footerY, pageWidth - margin, footerY);
     
     doc.setFontSize(7);
-    doc.setTextColor(150, 150, 150);
+    doc.setTextColor(100, 100, 100);
     doc.setFont('helvetica', 'italic');
     doc.text('Generated by ' + appName, startX + (pageWidth - margin * 2) / 2, footerY + 5, { align: 'center' });
 
     // Generate filename
     const filename = `${appName.replace(/\s+/g, '-')}-Executive-Report-${dateRange.startDate}-to-${dateRange.endDate}.pdf`;
 
-    // Save the PDF
-    doc.save(filename);
+    if (action === 'print') {
+      const blob = doc.output('blob');
+      const url = URL.createObjectURL(blob);
+      const w = window.open(url, '_blank', 'width=800,height=600');
+      if (w) w.onload = () => setTimeout(() => w.print(), 400);
+      setTimeout(() => URL.revokeObjectURL(url), 15000);
+    } else doc.save(filename);
   };
 
-  const generateDailyReportPDF = () => {
+  const generateDailyReportPDF = (options = {}) => {
+    const { printerType = 'normal', action = 'download' } = options;
+
+    // ----- 58mm small printer: full daily report in small tables -----
+    if (printerType === 'small') {
+      const doc = new jsPDF({ unit: 'mm', format: [58, 297] });
+      const W = 58, marginH = 3, topMargin = 5, contentW = W - marginH * 2, maxY = 290;
+      let y = topMargin;
+      doc.setDrawColor(0, 0, 0);
+      doc.setTextColor(0, 0, 0);
+      doc.setFillColor(255, 255, 255);
+      doc.setLineWidth(0.2);
+      const fmt = (amount) => (amount == null || isNaN(amount) ? '0' : Math.round(amount).toLocaleString());
+      const addPageIfNeeded = (need) => {
+        if (y + need > maxY) {
+          doc.addPage([58, 297]);
+          y = topMargin;
+          doc.setFontSize(5);
+          doc.setFont('helvetica', 'italic');
+          doc.text(appName + ' - Daily (cont.)', W / 2, y, { align: 'center' });
+          y += 4;
+        }
+      };
+      const drawSmallTable = (title, headers, rows, colWidths) => {
+        addPageIfNeeded(8 + rows.length * 3);
+        const rowH = 3;
+        doc.setFillColor(240, 240, 240);
+        doc.rect(marginH, y, contentW, 4, 'F');
+        doc.setFontSize(5);
+        doc.setFont('helvetica', 'bold');
+        doc.text(title, marginH + 1, y + 2.5);
+        y += 4;
+        doc.rect(marginH, y, contentW, rowH, 'F');
+        doc.setDrawColor(0, 0, 0);
+        doc.rect(marginH, y, contentW, rowH);
+        let x = marginH;
+        headers.forEach((h, i) => {
+          if (i > 0) doc.line(x, y, x, y + rowH);
+          doc.text(String(h).substring(0, 6), x + 0.5, y + 2);
+          x += colWidths[i];
+        });
+        y += rowH;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(4);
+        rows.forEach((row) => {
+          addPageIfNeeded(rowH);
+          doc.setDrawColor(0, 0, 0);
+          doc.rect(marginH, y, contentW, rowH);
+          x = marginH;
+          row.forEach((cell, i) => {
+            if (i > 0) doc.line(x, y, x, y + rowH);
+            const txt = String(cell ?? '').substring(0, colWidths[i] < 6 ? 3 : colWidths[i] < 10 ? 6 : 12);
+            doc.text(txt, x + 0.5, y + 2);
+            x += colWidths[i];
+          });
+          y += rowH;
+        });
+        y += 2;
+      };
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'bold');
+      doc.text(appName.toUpperCase(), W / 2, y, { align: 'center' });
+      y += 4;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(5);
+      doc.text('DAILY REPORT', W / 2, y, { align: 'center' });
+      y += 3;
+      const fmtDate = (d) => {
+        if (!d) return 'N/A';
+        const dt = new Date(d);
+        return `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}/${dt.getFullYear()}`;
+      };
+      doc.text(fmtDate(dailyDate), W / 2, y, { align: 'center' });
+      y += 5;
+      doc.line(marginH, y, W - marginH, y);
+      y += 3;
+      const salesRows = dailySales.map((sale) => {
+        const invItem = inventory.find(inv => inv.name === sale.name);
+        const costPrice = invItem ? parseFloat(invItem.unit_price) || 0 : 0;
+        const sellPrice = parseFloat(sale.unit_price) || 0;
+        const pcs = parseInt(sale.pcs) || 0;
+        const totalSale = parseFloat(sale.total_price) || 0;
+        const gainLoss = totalSale - costPrice * pcs;
+        return [(sale.name || 'N/A').substring(0, 10), String(pcs), fmt(costPrice), fmt(sellPrice), fmt(totalSale), fmt(gainLoss)];
+      });
+      salesRows.push(['TOTAL', '', '', '', fmt(dailySalesTotal), fmt(dailyGainLoss)]);
+      drawSmallTable('SALES', ['Item', 'Pcs', 'Cost', 'Sell', 'Total', 'G/L'], salesRows, [12, 4, 8, 8, 8, 10]);
+      const debtsRows = dailyDebts.map((d) => [(d.name || 'N/A').substring(0, 10), String(d.pcs || 0), fmt(parseFloat(d.total_price)), fmt(parseFloat(d.amount_payable_now)), fmt(parseFloat(d.balance_owed))]);
+      if (debtsRows.length > 0) {
+        debtsRows.push(['TOTAL', '', fmt(dailyDebts.reduce((s, d) => s + (parseFloat(d.total_price) || 0), 0)), '', fmt(dailyDebtsOwed)]);
+        drawSmallTable('DEBTS', ['Item', 'Pcs', 'Total', 'Paid', 'Owed'], debtsRows, [14, 4, 10, 10, 12]);
+      }
+      const summaryRows = [['Sales total', fmt(dailySalesTotal)], ['Gain/Loss', fmt(dailyGainLoss)], ['Debts owed', fmt(dailyDebtsOwed)]];
+      drawSmallTable('SUMMARY', ['Head', 'Amount'], summaryRows, [28, 22]);
+      if (dailyMostSoldItems && dailyMostSoldItems.length > 0) {
+        const mostRows = dailyMostSoldItems.slice(0, 5).map((m, i) => [(i + 1) + '.', (m.name || 'N/A').substring(0, 12), String(m.count || 0)]);
+        drawSmallTable('MOST SOLD', ['#', 'Item', 'Qty'], mostRows, [4, 28, 8]);
+      }
+      if (dailyLeastSoldItems && dailyLeastSoldItems.length > 0) {
+        const leastRows = dailyLeastSoldItems.slice(0, 5).map((m, i) => [(i + 1) + '.', (m.name || 'N/A').substring(0, 12), String(m.count || 0)]);
+        drawSmallTable('LEAST SOLD', ['#', 'Item', 'Qty'], leastRows, [4, 28, 8]);
+      }
+      addPageIfNeeded(6);
+      doc.setFontSize(4);
+      doc.setFont('helvetica', 'italic');
+      doc.text('Generated by ' + appName, W / 2, y, { align: 'center' });
+      const filename = `${appName.replace(/\s+/g, '-')}-Daily-58mm.pdf`;
+      if (action === 'print') {
+        const blob = doc.output('blob');
+        const url = URL.createObjectURL(blob);
+        const w = window.open(url, '_blank', 'width=400,height=600');
+        if (w) w.onload = () => setTimeout(() => w.print(), 400);
+        setTimeout(() => URL.revokeObjectURL(url), 15000);
+      } else doc.save(filename);
+      return;
+    }
+
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
@@ -1167,7 +1408,7 @@ const Report = () => {
         doc.setLineWidth(0.3);
         doc.line(startX, footerY, pageWidth - margin, footerY);
         doc.setFontSize(7);
-        doc.setTextColor(150, 150, 150);
+        doc.setTextColor(100, 100, 100);
         doc.setFont('helvetica', 'italic');
         doc.text('Generated by ' + appName, startX + (pageWidth - margin * 2) / 2, footerY + 5, { align: 'center' });
         doc.addPage();
@@ -1191,18 +1432,18 @@ const Report = () => {
       }
       
       if (title) {
-        doc.setFillColor(173, 216, 230);
+        doc.setFillColor(240, 240, 240);
         doc.rect(startX, y, tableWidth, 5, 'F');
-        doc.setTextColor(50, 50, 50);
+        doc.setTextColor(0, 0, 0);
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
         doc.text(title, startX + 2, y + 3.5);
         y += 5;
       }
 
-      doc.setFillColor(173, 216, 230);
+      doc.setFillColor(240, 240, 240);
       doc.rect(startX, y, tableWidth, rowHeight, 'F');
-      doc.setTextColor(50, 50, 50);
+      doc.setTextColor(0, 0, 0);
       doc.setFontSize(8);
       doc.setFont('helvetica', 'bold');
       doc.setDrawColor(200, 200, 200);
@@ -1233,7 +1474,7 @@ const Report = () => {
           doc.setLineWidth(0.3);
           doc.line(startX, footerY, pageWidth - margin, footerY);
           doc.setFontSize(7);
-          doc.setTextColor(150, 150, 150);
+          doc.setTextColor(100, 100, 100);
           doc.setFont('helvetica', 'italic');
           doc.text('Generated by ' + appName, startX + (pageWidth - margin * 2) / 2, footerY + 5, { align: 'center' });
           doc.addPage();
@@ -1242,18 +1483,18 @@ const Report = () => {
           y = currentY;
           
           if (title) {
-            doc.setFillColor(173, 216, 230);
+            doc.setFillColor(240, 240, 240);
             doc.rect(startX, y, tableWidth, 5, 'F');
-            doc.setTextColor(50, 50, 50);
+            doc.setTextColor(0, 0, 0);
             doc.setFontSize(9);
             doc.setFont('helvetica', 'bold');
             doc.text(title + ' (continued)', startX + 2, y + 3.5);
             y += 5;
           }
           
-          doc.setFillColor(173, 216, 230);
+          doc.setFillColor(240, 240, 240);
           doc.rect(startX, y, tableWidth, rowHeight, 'F');
-          doc.setTextColor(50, 50, 50);
+          doc.setTextColor(0, 0, 0);
           doc.setFontSize(7);
           doc.setFont('helvetica', 'bold');
           doc.setDrawColor(200, 200, 200);
@@ -1275,13 +1516,13 @@ const Report = () => {
         if (isHighlighted && highlightColor) {
           doc.setFillColor(highlightColor.r, highlightColor.g, highlightColor.b);
           doc.rect(startX, y, tableWidth, rowHeight, 'F');
-          doc.setTextColor(50, 50, 50);
+          doc.setTextColor(0, 0, 0);
         } else if (rowIndex % 2 === 0 && !isHighlighted) {
           doc.setFillColor(252, 252, 252);
           doc.rect(startX, y, tableWidth, rowHeight, 'F');
-          doc.setTextColor(50, 50, 50);
+          doc.setTextColor(0, 0, 0);
         } else if (!isHighlighted) {
-          doc.setTextColor(50, 50, 50);
+          doc.setTextColor(0, 0, 0);
         }
         
         doc.setDrawColor(200, 200, 200);
@@ -1321,14 +1562,14 @@ const Report = () => {
     // Header function
     const drawHeader = () => {
       const headerHeight = 22; // Increased to accommodate multi-line dates
-      doc.setFillColor(173, 216, 230);
+      doc.setFillColor(240, 240, 240);
       doc.rect(startX, currentY, pageWidth - (margin * 2), headerHeight, 'F');
-      doc.setFillColor(135, 206, 235);
+      doc.setFillColor(220, 220, 220);
       doc.rect(startX, currentY, pageWidth - (margin * 2), 2.5, 'F');
       doc.setFillColor(128, 128, 128);
       doc.rect(startX + pageWidth - (margin * 2) - 35, currentY, 35, headerHeight, 'F');
 
-      doc.setTextColor(50, 50, 50);
+      doc.setTextColor(0, 0, 0);
       doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
       doc.text(appName.toUpperCase(), startX + 6, currentY + 7);
@@ -1420,7 +1661,7 @@ const Report = () => {
       }
       
       // Title (no background highlight)
-      doc.setTextColor(50, 50, 50);
+      doc.setTextColor(0, 0, 0);
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
       doc.text('MOST SOLD ITEMS', startX + 2, currentY + 3.5);
@@ -1429,7 +1670,7 @@ const Report = () => {
       // Items as text
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
-      doc.setTextColor(50, 50, 50);
+      doc.setTextColor(0, 0, 0);
       
       dailyMostSoldItems.forEach((item) => {
         // Format: "Item Name: X Pcs (AmountFCFA)"
@@ -1467,7 +1708,7 @@ const Report = () => {
       }
       
       // Title (no background highlight)
-      doc.setTextColor(50, 50, 50);
+      doc.setTextColor(0, 0, 0);
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
       doc.text('LEAST SOLD ITEMS', startX + 2, currentY + 3.5);
@@ -1476,7 +1717,7 @@ const Report = () => {
       // Items as text
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
-      doc.setTextColor(50, 50, 50);
+      doc.setTextColor(0, 0, 0);
       
       dailyLeastSoldItems.forEach((item) => {
         // Format: "Item Name: X Pcs (AmountFCFA)"
@@ -1511,15 +1752,117 @@ const Report = () => {
     doc.setLineWidth(0.3);
     doc.line(startX, footerY, pageWidth - margin, footerY);
     doc.setFontSize(7);
-    doc.setTextColor(150, 150, 150);
+    doc.setTextColor(100, 100, 100);
     doc.setFont('helvetica', 'italic');
     doc.text('Generated by ' + appName, startX + (pageWidth - margin * 2) / 2, footerY + 5, { align: 'center' });
 
     const filename = `${appName.replace(/\s+/g, '-')}-Daily-Report-${dailyDate}.pdf`;
-    doc.save(filename);
+    if (action === 'print') {
+      const blob = doc.output('blob');
+      const url = URL.createObjectURL(blob);
+      const w = window.open(url, '_blank', 'width=800,height=600');
+      if (w) w.onload = () => setTimeout(() => w.print(), 400);
+      setTimeout(() => URL.revokeObjectURL(url), 15000);
+    } else doc.save(filename);
   };
 
-  const generateStocksReportPDF = () => {
+  const generateStocksReportPDF = (options = {}) => {
+    const { printerType = 'normal', action = 'download' } = options;
+
+    // ----- 58mm small printer: full stocks report in small table -----
+    if (printerType === 'small') {
+      const doc = new jsPDF({ unit: 'mm', format: [58, 297] });
+      const W = 58, marginH = 3, topMargin = 5, contentW = W - marginH * 2, maxY = 290;
+      let y = topMargin;
+      doc.setDrawColor(0, 0, 0);
+      doc.setTextColor(0, 0, 0);
+      doc.setFillColor(255, 255, 255);
+      doc.setLineWidth(0.2);
+      const fmt = (amount) => (amount == null || isNaN(amount) ? '0' : Math.round(amount).toLocaleString());
+      const addPageIfNeeded = (need) => {
+        if (y + need > maxY) {
+          doc.addPage([58, 297]);
+          y = topMargin;
+          doc.setFontSize(5);
+          doc.setFont('helvetica', 'italic');
+          doc.text(appName + ' - Stocks (cont.)', W / 2, y, { align: 'center' });
+          y += 4;
+        }
+      };
+      const drawSmallTable = (title, headers, rows, colWidths) => {
+        addPageIfNeeded(8 + rows.length * 3);
+        const rowH = 3;
+        doc.setFillColor(240, 240, 240);
+        doc.rect(marginH, y, contentW, 4, 'F');
+        doc.setFontSize(5);
+        doc.setFont('helvetica', 'bold');
+        doc.text(title, marginH + 1, y + 2.5);
+        y += 4;
+        doc.rect(marginH, y, contentW, rowH, 'F');
+        doc.setDrawColor(0, 0, 0);
+        doc.rect(marginH, y, contentW, rowH);
+        let x = marginH;
+        headers.forEach((h, i) => {
+          if (i > 0) doc.line(x, y, x, y + rowH);
+          doc.text(String(h).substring(0, 6), x + 0.5, y + 2);
+          x += colWidths[i];
+        });
+        y += rowH;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(4);
+        rows.forEach((row) => {
+          addPageIfNeeded(rowH);
+          doc.setDrawColor(0, 0, 0);
+          doc.rect(marginH, y, contentW, rowH);
+          x = marginH;
+          row.forEach((cell, i) => {
+            if (i > 0) doc.line(x, y, x, y + rowH);
+            const txt = String(cell ?? '').substring(0, colWidths[i] < 6 ? 4 : colWidths[i] < 10 ? 8 : 16);
+            doc.text(txt, x + 0.5, y + 2);
+            x += colWidths[i];
+          });
+          y += rowH;
+        });
+        y += 2;
+      };
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'bold');
+      doc.text(appName.toUpperCase(), W / 2, y, { align: 'center' });
+      y += 4;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(5);
+      doc.text('STOCKS REPORT', W / 2, y, { align: 'center' });
+      y += 3;
+      const now = new Date();
+      doc.text(`${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`, W / 2, y, { align: 'center' });
+      y += 5;
+      doc.line(marginH, y, W - marginH, y);
+      y += 3;
+      const totalVal = stocksData.reduce((s, item) => s + (item.totalPrice || 0), 0);
+      const stocksRows = stocksData.map((item, index) => [
+        String(index + 1),
+        (item.name || 'N/A').substring(0, 14),
+        String(item.pcsLeft ?? 0),
+        fmt(item.unitPrice),
+        fmt(item.totalPrice)
+      ]);
+      stocksRows.push(['TOTAL', '', '', '', fmt(totalVal)]);
+      drawSmallTable('INVENTORY STOCK', ['#', 'Item', 'Pcs', 'Unit', 'Total'], stocksRows, [4, 18, 6, 10, 12]);
+      addPageIfNeeded(6);
+      doc.setFontSize(4);
+      doc.setFont('helvetica', 'italic');
+      doc.text('Generated by ' + appName, W / 2, y, { align: 'center' });
+      const filename = `${appName.replace(/\s+/g, '-')}-Stocks-58mm.pdf`;
+      if (action === 'print') {
+        const blob = doc.output('blob');
+        const url = URL.createObjectURL(blob);
+        const w = window.open(url, '_blank', 'width=400,height=600');
+        if (w) w.onload = () => setTimeout(() => w.print(), 400);
+        setTimeout(() => URL.revokeObjectURL(url), 15000);
+      } else doc.save(filename);
+      return;
+    }
+
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
@@ -1594,14 +1937,14 @@ const Report = () => {
     // Header function
     const drawHeader = () => {
       const headerHeight = 22; // Increased to accommodate multi-line dates
-      doc.setFillColor(173, 216, 230);
+      doc.setFillColor(240, 240, 240);
       doc.rect(startX, currentY, pageWidth - (margin * 2), headerHeight, 'F');
-      doc.setFillColor(135, 206, 235);
+      doc.setFillColor(220, 220, 220);
       doc.rect(startX, currentY, pageWidth - (margin * 2), 2.5, 'F');
       doc.setFillColor(128, 128, 128);
       doc.rect(startX + pageWidth - (margin * 2) - 35, currentY, 35, headerHeight, 'F');
 
-      doc.setTextColor(50, 50, 50);
+      doc.setTextColor(0, 0, 0);
       doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
       doc.text(appName.toUpperCase(), startX + 6, currentY + 7);
@@ -1627,7 +1970,7 @@ const Report = () => {
         doc.setLineWidth(0.3);
         doc.line(startX, footerY, pageWidth - margin, footerY);
         doc.setFontSize(7);
-        doc.setTextColor(150, 150, 150);
+        doc.setTextColor(100, 100, 100);
         doc.setFont('helvetica', 'italic');
         doc.text('Generated by ' + appName, startX + (pageWidth - margin * 2) / 2, footerY + 5, { align: 'center' });
         doc.addPage();
@@ -1651,18 +1994,18 @@ const Report = () => {
       }
       
       if (title) {
-        doc.setFillColor(173, 216, 230);
+        doc.setFillColor(240, 240, 240);
         doc.rect(startX, y, tableWidth, 5, 'F');
-        doc.setTextColor(50, 50, 50);
+        doc.setTextColor(0, 0, 0);
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
         doc.text(title, startX + 2, y + 3.5);
         y += 5;
       }
 
-      doc.setFillColor(173, 216, 230);
+      doc.setFillColor(240, 240, 240);
       doc.rect(startX, y, tableWidth, rowHeight, 'F');
-      doc.setTextColor(50, 50, 50);
+      doc.setTextColor(0, 0, 0);
       doc.setFontSize(8);
       doc.setFont('helvetica', 'bold');
       doc.setDrawColor(200, 200, 200);
@@ -1692,7 +2035,7 @@ const Report = () => {
           doc.setLineWidth(0.3);
           doc.line(startX, footerY, pageWidth - margin, footerY);
           doc.setFontSize(7);
-          doc.setTextColor(150, 150, 150);
+          doc.setTextColor(100, 100, 100);
           doc.setFont('helvetica', 'italic');
           doc.text('Generated by ' + appName, startX + (pageWidth - margin * 2) / 2, footerY + 5, { align: 'center' });
           doc.addPage();
@@ -1701,18 +2044,18 @@ const Report = () => {
           y = currentY;
           
           if (title) {
-            doc.setFillColor(173, 216, 230);
+            doc.setFillColor(240, 240, 240);
             doc.rect(startX, y, tableWidth, 5, 'F');
-            doc.setTextColor(50, 50, 50);
+            doc.setTextColor(0, 0, 0);
             doc.setFontSize(9);
             doc.setFont('helvetica', 'bold');
             doc.text(title + ' (continued)', startX + 2, y + 3.5);
             y += 5;
           }
           
-          doc.setFillColor(173, 216, 230);
+          doc.setFillColor(240, 240, 240);
           doc.rect(startX, y, tableWidth, rowHeight, 'F');
-          doc.setTextColor(50, 50, 50);
+          doc.setTextColor(0, 0, 0);
           doc.setFontSize(7);
           doc.setFont('helvetica', 'bold');
           doc.setDrawColor(200, 200, 200);
@@ -1734,13 +2077,13 @@ const Report = () => {
         if (isHighlighted) {
           doc.setFillColor(200, 220, 240);
           doc.rect(startX, y, tableWidth, rowHeight, 'F');
-          doc.setTextColor(50, 50, 50);
+          doc.setTextColor(0, 0, 0);
         } else if (rowIndex % 2 === 0 && !isHighlighted) {
           doc.setFillColor(252, 252, 252);
           doc.rect(startX, y, tableWidth, rowHeight, 'F');
-          doc.setTextColor(50, 50, 50);
+          doc.setTextColor(0, 0, 0);
         } else if (!isHighlighted) {
-          doc.setTextColor(50, 50, 50);
+          doc.setTextColor(0, 0, 0);
         }
         
         doc.setDrawColor(200, 200, 200);
@@ -1803,12 +2146,18 @@ const Report = () => {
     doc.setLineWidth(0.3);
     doc.line(startX, footerY, pageWidth - margin, footerY);
     doc.setFontSize(7);
-    doc.setTextColor(150, 150, 150);
+    doc.setTextColor(100, 100, 100);
     doc.setFont('helvetica', 'italic');
     doc.text('Generated by ' + appName, startX + (pageWidth - margin * 2) / 2, footerY + 5, { align: 'center' });
 
     const filename = `${appName.replace(/\s+/g, '-')}-Stocks-Report-${formatDateForPDF(new Date().toISOString())}.pdf`;
-    doc.save(filename);
+    if (action === 'print') {
+      const blob = doc.output('blob');
+      const url = URL.createObjectURL(blob);
+      const w = window.open(url, '_blank', 'width=800,height=600');
+      if (w) w.onload = () => setTimeout(() => w.print(), 400);
+      setTimeout(() => URL.revokeObjectURL(url), 15000);
+    } else doc.save(filename);
   };
 
   return (
@@ -1847,9 +2196,9 @@ const Report = () => {
         <>
           <div className="tab-header">
             <h2 className="tab-title">Executive Report</h2>
-            <button className="generate-pdf-btn" onClick={handleGeneratePDF}>
-              <FaFileDownload className="btn-icon" />
-              Generate PDF
+            <button className="generate-pdf-btn" onClick={() => handleOpenReportPrintModal('executive')}>
+              <FaPrint className="btn-icon" />
+              Print
             </button>
           </div>
 
@@ -2151,9 +2500,9 @@ const Report = () => {
         <>
           <div className="tab-header">
             <h2 className="tab-title">Daily Report</h2>
-            <button className="generate-pdf-btn" onClick={handleGenerateDailyPDF}>
-              <FaFileDownload className="btn-icon" />
-              Generate PDF
+            <button className="generate-pdf-btn" onClick={() => handleOpenReportPrintModal('daily')}>
+              <FaPrint className="btn-icon" />
+              Print
             </button>
           </div>
 
@@ -2363,9 +2712,9 @@ const Report = () => {
         <>
           <div className="tab-header">
             <h2 className="tab-title">Stocks Report</h2>
-            <button className="generate-pdf-btn" onClick={handleGenerateStocksPDF}>
-              <FaFileDownload className="btn-icon" />
-              Generate PDF
+            <button className="generate-pdf-btn" onClick={() => handleOpenReportPrintModal('stocks')}>
+              <FaPrint className="btn-icon" />
+              Print
             </button>
           </div>
 
@@ -2426,6 +2775,29 @@ const Report = () => {
             </div>
           )}
         </>
+      )}
+
+      {showReportPrintModal && (
+        <div className="receipt-print-modal-overlay" onClick={() => { setShowReportPrintModal(false); setReportPrintKind(null); }}>
+          <div className="receipt-print-modal" onClick={(e) => e.stopPropagation()}>
+            <h3 className="receipt-print-modal-title">Select printer type</h3>
+            <div className="receipt-print-options">
+              <button type="button" className="receipt-print-option receipt-print-option-small" onClick={() => handleReportPrintConfirm('small')}>
+                <span className="receipt-print-option-icon">🖨️</span>
+                <span className="receipt-print-option-label">Small printer</span>
+                <span className="receipt-print-option-desc">58mm thermal (e.g. mobile Bluetooth)</span>
+              </button>
+              <button type="button" className="receipt-print-option receipt-print-option-normal" onClick={() => handleReportPrintConfirm('normal')}>
+                <span className="receipt-print-option-icon">🖨️</span>
+                <span className="receipt-print-option-label">Normal printer</span>
+                <span className="receipt-print-option-desc">A4 / Letter — Save as PDF or print</span>
+              </button>
+            </div>
+            <button type="button" className="receipt-print-cancel" onClick={() => { setShowReportPrintModal(false); setReportPrintKind(null); }}>
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

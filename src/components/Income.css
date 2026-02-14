@@ -435,6 +435,95 @@
   box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
 }
 
+.print-btn {
+  background-color: #2196F3;
+  color: #ffffff;
+}
+
+.print-btn:hover {
+  background-color: #1976D2;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+}
+
+/* Print type modal */
+.receipt-print-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+.receipt-print-modal {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+.receipt-print-modal-title {
+  margin: 0 0 20px 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111;
+  font-family: 'Poppins', sans-serif;
+  text-align: center;
+}
+.receipt-print-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.receipt-print-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  background: #fafafa;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+.receipt-print-option:hover {
+  border-color: #2196F3;
+  background: #f0f7ff;
+}
+.receipt-print-option-icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+.receipt-print-option-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111;
+  font-family: 'Poppins', sans-serif;
+}
+.receipt-print-option-desc {
+  font-size: 12px;
+  color: #666;
+  margin-top: 4px;
+}
+.receipt-print-cancel {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: 'Poppins', sans-serif;
+}
+.receipt-print-cancel:hover {
+  background: #f5f5f5;
+}
+
 @media (max-width: 768px) {
   .income-container {
     padding: 15px;

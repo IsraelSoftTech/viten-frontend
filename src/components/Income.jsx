@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaPlus, FaEdit, FaTrash, FaTimes, FaSave, FaDownload } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaTimes, FaSave, FaDownload, FaPrint } from 'react-icons/fa';
 import { incomeAPI, purchasesAPI, configurationAPI } from '../api';
 import { formatCurrency as formatCurrencyUtil, fetchDefaultCurrency } from '../utils/currency';
 import { generateReceipt } from '../utils/receiptGenerator';
@@ -21,14 +21,16 @@ const Income = () => {
     date: '',
     name: '',
     pcs: '',
-    unit_price: '', // This will be inventory unit price (read-only)
-    selling_price: '', // This will be the actual selling price
+    unit_price: '',
+    selling_price: '',
     total_price: '',
-    customer_signature: '',
-    electronic_signature: '',
     client_name: '',
-    client_phone: ''
+    client_phone: '',
+    seller_name: ''
   });
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [printRecord, setPrintRecord] = useState(null);
+  const [receiptOpts, setReceiptOpts] = useState(null);
 
   useEffect(() => {
     fetchIncome();
@@ -88,9 +90,9 @@ const Income = () => {
       unit_price: '',
       selling_price: '',
       total_price: '',
-      description: '',
       client_name: '',
-      client_phone: ''
+      client_phone: '',
+      seller_name: ''
     });
   };
 
@@ -106,13 +108,12 @@ const Income = () => {
       date: record.date,
       name: record.name,
       pcs: record.pcs || '',
-      unit_price: inventoryItem ? inventoryItem.unit_price : '', // Purchase price from inventory
-      selling_price: record.unit_price || '', // In existing records, unit_price is the selling price
+      unit_price: inventoryItem ? inventoryItem.unit_price : '',
+      selling_price: record.unit_price || '',
       total_price: record.total_price || '',
-      customer_signature: record.customer_signature || '',
-      electronic_signature: record.electronic_signature || '',
       client_name: record.client_name || '',
-      client_phone: record.client_phone || ''
+      client_phone: record.client_phone || '',
+      seller_name: record.seller_name || ''
     });
   };
 
@@ -129,9 +130,9 @@ const Income = () => {
       unit_price: '',
       selling_price: '',
       total_price: '',
-      description: '',
       client_name: '',
-      client_phone: ''
+      client_phone: '',
+      seller_name: ''
     });
   };
 
@@ -161,11 +162,10 @@ const Income = () => {
       date: formData.date,
       name: formData.name,
       pcs: parseInt(formData.pcs) || 0,
-      unit_price: parseFloat(formData.selling_price) || 0, // Store selling price as unit_price
-      customer_signature: formData.customer_signature,
-      electronic_signature: formData.electronic_signature,
+      unit_price: parseFloat(formData.selling_price) || 0,
       client_name: formData.client_name,
-      client_phone: formData.client_phone
+      client_phone: formData.client_phone,
+      seller_name: formData.seller_name
     };
 
     try {
@@ -178,43 +178,7 @@ const Income = () => {
       } else {
         response = await incomeAPI.createIncome(submitData);
         if (response.success) {
-          setSuccessMessage('Sales record created successfully! Receipt generated.');
-          
-          // Generate receipt
-          try {
-            const configResponse = await configurationAPI.getConfiguration();
-            const appName = configResponse.success && configResponse.configuration 
-              ? configResponse.configuration.app_name 
-              : 'Shop Accountant';
-            const logoUrl = configResponse.success && configResponse.configuration 
-              ? configResponse.configuration.logo_url 
-              : null;
-            const location = configResponse.success && configResponse.configuration 
-              ? configResponse.configuration.location 
-              : null;
-            const items = configResponse.success && configResponse.configuration 
-              ? configResponse.configuration.items || []
-              : [];
-            
-            // Get the created record
-            const createdRecord = response.income || {
-              id: response.income?.id || Date.now(),
-              date: submitData.date,
-              name: submitData.name,
-              pcs: submitData.pcs,
-              unit_price: submitData.unit_price,
-              total_price: submitData.pcs * submitData.unit_price,
-              customer_signature: submitData.customer_signature || '',
-              electronic_signature: submitData.electronic_signature || '',
-              client_name: submitData.client_name || '',
-              client_phone: submitData.client_phone || ''
-            };
-            
-            generateReceipt(createdRecord, 'sale', appName, logoUrl, location, items);
-          } catch (receiptError) {
-            console.error('Error generating receipt:', receiptError);
-            // Don't fail the operation if receipt generation fails
-          }
+          setSuccessMessage('Sales record created successfully!');
         }
       }
 
@@ -248,27 +212,55 @@ const Income = () => {
     }
   };
 
+  const getReceiptOptions = async () => {
+    const configResponse = await configurationAPI.getConfiguration();
+    const c = configResponse.success && configResponse.configuration ? configResponse.configuration : {};
+    return {
+      appName: c.app_name || 'Shop Accountant',
+      location: c.location || null,
+      items: c.items || [],
+      thank_you_message: c.receipt_thank_you_message,
+      items_received_message: c.receipt_items_received_message
+    };
+  };
+
   const handleDownloadReceipt = async (record) => {
     try {
-      const configResponse = await configurationAPI.getConfiguration();
-      const appName = configResponse.success && configResponse.configuration 
-        ? configResponse.configuration.app_name 
-        : 'Shop Accountant';
-      const logoUrl = configResponse.success && configResponse.configuration 
-        ? configResponse.configuration.logo_url 
-        : null;
-      const location = configResponse.success && configResponse.configuration 
-        ? configResponse.configuration.location 
-        : null;
-      const items = configResponse.success && configResponse.configuration 
-        ? configResponse.configuration.items || []
-        : [];
-      
-      generateReceipt(record, 'sale', appName, logoUrl, location, items);
+      const opts = await getReceiptOptions();
+      generateReceipt(record, 'sale', {
+        ...opts,
+        seller_name: record.seller_name || '',
+        printerType: 'normal',
+        action: 'download'
+      });
     } catch (error) {
       console.error('Error generating receipt:', error);
       setError('Failed to generate receipt. Please try again.');
     }
+  };
+
+  const handlePrintClick = async (record) => {
+    try {
+      const opts = await getReceiptOptions();
+      setReceiptOpts({ ...opts, seller_name: record.seller_name || '' });
+      setPrintRecord(record);
+      setShowPrintModal(true);
+    } catch (error) {
+      console.error('Error preparing print:', error);
+      setError('Failed to open print options.');
+    }
+  };
+
+  const handlePrintConfirm = (printerType) => {
+    if (!printRecord || !receiptOpts) return;
+    generateReceipt(printRecord, 'sale', {
+      ...receiptOpts,
+      printerType,
+      action: 'print'
+    });
+    setShowPrintModal(false);
+    setPrintRecord(null);
+    setReceiptOpts(null);
   };
 
   const handleInputChange = (field, value) => {
@@ -379,6 +371,37 @@ const Income = () => {
       </div>
 
       {error && <div className="error-message">{error}</div>}
+
+      {showPrintModal && (
+        <div className="receipt-print-modal-overlay" onClick={() => { setShowPrintModal(false); setPrintRecord(null); setReceiptOpts(null); }}>
+          <div className="receipt-print-modal" onClick={(e) => e.stopPropagation()}>
+            <h3 className="receipt-print-modal-title">Select printer type</h3>
+            <div className="receipt-print-options">
+              <button
+                type="button"
+                className="receipt-print-option receipt-print-option-small"
+                onClick={() => handlePrintConfirm('small')}
+              >
+                <span className="receipt-print-option-icon">🖨️</span>
+                <span className="receipt-print-option-label">Small printer</span>
+                <span className="receipt-print-option-desc">58mm thermal (e.g. mobile Bluetooth)</span>
+              </button>
+              <button
+                type="button"
+                className="receipt-print-option receipt-print-option-normal"
+                onClick={() => handlePrintConfirm('normal')}
+              >
+                <span className="receipt-print-option-icon">🖨️</span>
+                <span className="receipt-print-option-label">Normal printer</span>
+                <span className="receipt-print-option-desc">A4 / Letter — Save as PDF or print</span>
+              </button>
+            </div>
+            <button type="button" className="receipt-print-cancel" onClick={() => { setShowPrintModal(false); setPrintRecord(null); setReceiptOpts(null); }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {showForm && (
         <div className="income-form-overlay">
@@ -501,29 +524,6 @@ const Income = () => {
 
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="customer_signature">Customer Signature</label>
-                  <input
-                    type="text"
-                    id="customer_signature"
-                    value={formData.customer_signature}
-                    onChange={(e) => handleInputChange('customer_signature', e.target.value)}
-                    placeholder="Enter customer signature (optional)"
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="electronic_signature">Electronic Signature</label>
-                  <input
-                    type="text"
-                    id="electronic_signature"
-                    value={formData.electronic_signature}
-                    onChange={(e) => handleInputChange('electronic_signature', e.target.value)}
-                    placeholder="Enter electronic signature (optional)"
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
                   <label htmlFor="client_name">Client Name</label>
                   <input
                     type="text"
@@ -541,6 +541,16 @@ const Income = () => {
                     value={formData.client_phone}
                     onChange={(e) => handleInputChange('client_phone', e.target.value)}
                     placeholder="Enter client phone (optional)"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="seller_name">Seller's name</label>
+                  <input
+                    type="text"
+                    id="seller_name"
+                    value={formData.seller_name}
+                    onChange={(e) => handleInputChange('seller_name', e.target.value)}
+                    placeholder="Name shown on receipt (optional)"
                   />
                 </div>
               </div>
@@ -615,6 +625,13 @@ const Income = () => {
                           title="Download Receipt"
                         >
                           <FaDownload />
+                        </button>
+                        <button
+                          className="action-btn print-btn"
+                          onClick={() => handlePrintClick(record)}
+                          title="Print Receipt"
+                        >
+                          <FaPrint />
                         </button>
                       </div>
                     </td>

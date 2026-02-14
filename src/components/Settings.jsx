@@ -15,7 +15,11 @@ import {
   FaCircle,
   FaDownload,
   FaFileUpload,
-  FaInfoCircle
+  FaInfoCircle,
+  FaLock,
+  FaKey,
+  FaUnlock,
+  FaTrashAlt
 } from 'react-icons/fa';
 import { stockDeficiencyAPI, configurationAPI, currencyAPI, backupAPI } from '../api';
 import { fetchDefaultCurrency } from '../utils/currency';
@@ -36,6 +40,8 @@ const Settings = () => {
       setActiveTab('backup');
     } else if (path.includes('/configuration')) {
       setActiveTab('configuration');
+    } else if (path.includes('/pin-setting')) {
+      setActiveTab('pin-setting');
     } else if (path.includes('/stock-deficiency')) {
       setActiveTab('stock-deficiency');
     } else {
@@ -53,6 +59,8 @@ const Settings = () => {
         return <BackupContent />;
       case 'configuration':
         return <ConfigurationContent />;
+      case 'pin-setting':
+        return <PinSettingContent />;
       case 'stock-deficiency':
         return <StockDeficiencyContent />;
       default:
@@ -613,6 +621,8 @@ const ConfigurationContent = () => {
   const [logoUrl, setLogoUrl] = useState(null);
   const [location, setLocation] = useState('');
   const [items, setItems] = useState([]);
+  const [receiptThankYouMessage, setReceiptThankYouMessage] = useState('');
+  const [receiptItemsReceivedMessage, setReceiptItemsReceivedMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -638,6 +648,8 @@ const ConfigurationContent = () => {
         }
         setLocation(response.configuration.location || '');
         setItems(response.configuration.items || []);
+        setReceiptThankYouMessage(response.configuration.receipt_thank_you_message ?? 'Thank you for your business');
+        setReceiptItemsReceivedMessage(response.configuration.receipt_items_received_message ?? '{customer} received the above items in good condition.');
       } else {
         setError(response.message || 'Failed to fetch configuration');
       }
@@ -949,6 +961,254 @@ const ConfigurationContent = () => {
         </div>
         {items.length === 0 && (
           <p className="config-hint">Click "Add Item/Service" to start adding items</p>
+        )}
+      </div>
+
+      {/* Receipt messages Section */}
+      <div className="config-section">
+        <h3 className="config-section-title">Receipt messages</h3>
+        <p className="config-section-description">Text shown at the bottom of sale and debt receipts. Use {'{customer}'} in the second message to insert the customer name.</p>
+        <div className="config-input-group config-receipt-messages-group">
+          <div className="config-textarea-wrap">
+            <label className="config-label-inline">Thank-you message</label>
+            <textarea
+              value={receiptThankYouMessage}
+              onChange={(e) => setReceiptThankYouMessage(e.target.value)}
+              className="config-textarea config-input"
+              placeholder="e.g. Thank you for doing business with us"
+              disabled={saving}
+              rows={3}
+            />
+          </div>
+          <div className="config-textarea-wrap">
+            <label className="config-label-inline">Items received message (use {'{customer}'} for customer name)</label>
+            <textarea
+              value={receiptItemsReceivedMessage}
+              onChange={(e) => setReceiptItemsReceivedMessage(e.target.value)}
+              className="config-textarea config-input"
+              placeholder={'e.g. {customer} received the above items in good condition'}
+              disabled={saving}
+              rows={3}
+            />
+          </div>
+          <button
+            onClick={async () => {
+              setSaving(true);
+              setError('');
+              try {
+                const [thankRes, receivedRes] = await Promise.all([
+                  configurationAPI.updateReceiptThankYouMessage(receiptThankYouMessage.trim()),
+                  configurationAPI.updateReceiptItemsReceivedMessage(receiptItemsReceivedMessage.trim())
+                ]);
+                if (thankRes.success && receivedRes.success) {
+                  setSuccessMessage('Receipt messages updated successfully!');
+                } else {
+                  setError(thankRes.message || receivedRes.message || 'Failed to update receipt messages');
+                }
+              } catch (err) {
+                setError('An error occurred while updating receipt messages');
+              } finally {
+                setSaving(false);
+              }
+            }}
+            className="config-save-btn"
+            disabled={saving}
+          >
+            <FaSave /> {saving ? 'Saving...' : 'Save receipt messages'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const PinSettingContent = () => {
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isAdmin = user.username === 'admin1234';
+  const [goalPinStatus, setGoalPinStatus] = useState({ hasPin: false });
+  const [goalPin, setGoalPin] = useState('');
+  const [goalPinConfirm, setGoalPinConfirm] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+
+  useEffect(() => {
+    const fetchStatus = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const res = await configurationAPI.getGoalPinStatus();
+        if (res.success) setGoalPinStatus({ hasPin: res.hasPin });
+        else setError(res.message || 'Failed to load PIN status');
+      } catch (e) {
+        setError('Failed to load PIN status');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStatus();
+  }, []);
+
+  const handleSetGoalPin = async () => {
+    if (!isAdmin) {
+      setError('Only admin can set or change the Goal PIN.');
+      return;
+    }
+    const pin = goalPin.trim();
+    const confirm = goalPinConfirm.trim();
+    if (pin.length < 4) {
+      setError('PIN must be at least 4 characters.');
+      return;
+    }
+    if (pin !== confirm) {
+      setError('PIN and confirmation do not match.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      const res = await configurationAPI.setGoalPin(pin, user.username);
+      if (res.success) {
+        setSuccessMessage('Goal PIN set successfully.');
+        setGoalPinStatus({ hasPin: true });
+        setGoalPin('');
+        setGoalPinConfirm('');
+      } else {
+        setError(res.message || 'Failed to set PIN');
+      }
+    } catch (e) {
+      setError('Failed to set PIN');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRemoveGoalPin = async () => {
+    if (!isAdmin) {
+      setError('Only admin can remove the Goal PIN.');
+      return;
+    }
+    if (!window.confirm('Remove PIN protection for the Goal component? Anyone will be able to open Goal without entering a PIN.')) return;
+    setSaving(true);
+    setError('');
+    try {
+      const res = await configurationAPI.setGoalPin(null, user.username);
+      if (res.success) {
+        setSuccessMessage('Goal PIN removed.');
+        setGoalPinStatus({ hasPin: false });
+        setGoalPin('');
+        setGoalPinConfirm('');
+      } else {
+        setError(res.message || 'Failed to remove PIN');
+      }
+    } catch (e) {
+      setError('Failed to remove PIN');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="settings-section">
+        <div className="section-header">
+          <FaLock className="section-icon" />
+          <h2 className="section-title">PIN setting</h2>
+        </div>
+        <div className="loading-message">Loading...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="settings-section">
+      {successMessage && (
+        <SuccessMessage message={successMessage} onClose={() => setSuccessMessage('')} />
+      )}
+      <div className="section-header">
+        <FaLock className="section-icon" />
+        <h2 className="section-title">PIN setting</h2>
+      </div>
+      <p className="config-section-description" style={{ marginBottom: '1rem' }}>
+        Require a PIN to open specific components. Only the admin account can set or change PINs.
+      </p>
+      {error && <div className="error-message">{error}</div>}
+
+      <div className="config-section pin-config-section">
+        <h3 className="config-section-title">Goal component</h3>
+        <p className="config-section-description">
+          When a PIN is set, any user must enter it to access the Goal page.
+        </p>
+
+        {goalPinStatus.hasPin && (
+          <div className="pin-current-card">
+            <div className="pin-current-display">
+              <FaKey className="pin-current-icon" />
+              <span className="pin-current-masked">••••••••</span>
+              <span className="pin-current-label">PIN is set</span>
+            </div>
+            {isAdmin && (
+              <div className="pin-current-actions">
+                <button
+                  type="button"
+                  onClick={handleRemoveGoalPin}
+                  className="pin-action-btn pin-action-remove"
+                  disabled={saving}
+                  title="Remove PIN"
+                >
+                  <FaTrashAlt className="pin-action-icon" />
+                  <span>Remove</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {isAdmin && (
+          <div className="pin-form-row">
+            <div className="config-input-group pin-input-group">
+              <input
+                type="password"
+                value={goalPin}
+                onChange={(e) => setGoalPin(e.target.value)}
+                className="config-input"
+                placeholder={goalPinStatus.hasPin ? 'New PIN (min 4 characters)' : 'Set PIN (min 4 characters)'}
+                disabled={saving}
+                maxLength={20}
+                autoComplete="off"
+              />
+              <input
+                type="password"
+                value={goalPinConfirm}
+                onChange={(e) => setGoalPinConfirm(e.target.value)}
+                className="config-input"
+                placeholder="Confirm PIN"
+                disabled={saving}
+                maxLength={20}
+                autoComplete="off"
+              />
+              <button
+                type="button"
+                onClick={handleSetGoalPin}
+                className="config-save-btn pin-set-btn"
+                disabled={saving || goalPin.trim().length < 4 || goalPinConfirm.trim() !== goalPin.trim()}
+              >
+                <FaLock className="btn-icon-inline" />
+                {saving ? 'Saving...' : goalPinStatus.hasPin ? 'Change PIN' : 'Set PIN'}
+              </button>
+            </div>
+          </div>
+        )}
+        {!isAdmin && goalPinStatus.hasPin && (
+          <p className="config-hint">
+            <FaLock className="pin-hint-icon" /> Only admin can change or remove the PIN.
+          </p>
+        )}
+        {!isAdmin && !goalPinStatus.hasPin && (
+          <p className="config-hint">
+            <FaUnlock className="pin-hint-icon" /> Only the admin account can set a PIN for the Goal component.
+          </p>
         )}
       </div>
     </div>

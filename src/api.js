@@ -788,6 +788,73 @@ export const configurationAPI = {
       };
     }
   },
+
+  updateReceiptThankYouMessage: async (message) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/configuration/receipt-thank-you`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ receipt_thank_you_message: message }),
+      });
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return { success: false, message: 'Network error. Please check if the server is running.' };
+    }
+  },
+
+  updateReceiptItemsReceivedMessage: async (message) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/configuration/receipt-items-received`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ receipt_items_received_message: message }),
+      });
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return { success: false, message: 'Network error. Please check if the server is running.' };
+    }
+  },
+
+  // PIN settings (Goal component). Admin only can set; anyone can check status and verify.
+  getGoalPinStatus: async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/configuration/pin/goal`);
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return { success: false, hasPin: false, message: 'Network error.' };
+    }
+  },
+  setGoalPin: async (pin, username) => {
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (username) headers['X-User-Username'] = username;
+      const response = await fetch(`${API_BASE_URL}/configuration/pin/goal`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ pin: pin === '' ? null : pin }),
+      });
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return { success: false, message: 'Network error.' };
+    }
+  },
+  verifyGoalPin: async (pin) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/configuration/pin/verify-goal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin }),
+      });
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return { success: false, valid: false, message: 'Network error.' };
+    }
+  },
 };
 
 export const debtAPI = {
@@ -802,6 +869,17 @@ export const debtAPI = {
         success: false,
         message: 'Network error. Please check if the server is running.',
       };
+    }
+  },
+
+  // Get debt by receipt number (e.g. DEBT-000001) for repay flow
+  getDebtByReceipt: async (receiptNo) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/debts/by-receipt/${encodeURIComponent(receiptNo)}`);
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return { success: false, message: 'Network error.' };
     }
   },
 
@@ -875,6 +953,62 @@ export const debtAPI = {
         success: false,
         message: 'Network error. Please check if the server is running.',
       };
+    }
+  },
+};
+
+export const debtRepaymentAPI = {
+  getAll: async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/debt-repayments`);
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return { success: false, message: 'Network error.', repayments: [] };
+    }
+  },
+  getOne: async (id) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/debt-repayments/${id}`);
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return { success: false, message: 'Network error.' };
+    }
+  },
+  create: async (body) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/debt-repayments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return { success: false, message: 'Network error.' };
+    }
+  },
+  update: async (id, body) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/debt-repayments/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return { success: false, message: 'Network error.' };
+    }
+  },
+  delete: async (id) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/debt-repayments/${id}`, { method: 'DELETE' });
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return { success: false, message: 'Network error.' };
     }
   },
 };
