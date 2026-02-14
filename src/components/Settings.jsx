@@ -18,7 +18,7 @@ import {
   FaInfoCircle
 } from 'react-icons/fa';
 import { stockDeficiencyAPI, configurationAPI, currencyAPI, backupAPI } from '../api';
-import { formatCurrency as formatCurrencyUtil, fetchDefaultCurrency } from '../utils/currency';
+import { fetchDefaultCurrency } from '../utils/currency';
 import SuccessMessage from './SuccessMessage';
 import './Settings.css';
 
@@ -1042,18 +1042,6 @@ const StockDeficiencyContent = () => {
       window.removeEventListener('currencyUpdated', handleCurrencyUpdate);
     };
   }, []);
-
-  const formatCurrency = (amount) => {
-    if (!defaultCurrency) {
-      return new Intl.NumberFormat('fr-FR', {
-        style: 'currency',
-        currency: 'XAF',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0
-      }).format(amount);
-    }
-    return formatCurrencyUtil(amount, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-  };
 
   return (
     <div className="settings-section">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaPlus, FaEdit, FaTrash, FaTimes, FaSave, FaDownload, FaSearch } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaTimes, FaSave, FaDownload } from 'react-icons/fa';
 import { incomeAPI, purchasesAPI, configurationAPI } from '../api';
 import { formatCurrency as formatCurrencyUtil, fetchDefaultCurrency } from '../utils/currency';
 import { generateReceipt } from '../utils/receiptGenerator';

@@ -1,7 +1,6 @@
 import { currencyAPI } from '../api';
 
 let defaultCurrency = null;
-let currencyCache = null;
 
 // Fetch and cache default currency
 export const fetchDefaultCurrency = async () => {

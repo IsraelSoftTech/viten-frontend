@@ -13,7 +13,6 @@ const Dashboard = () => {
     loading: true
   });
 
-  const [incomeRecords, setIncomeRecords] = useState([]);
   const [stockAlerts, setStockAlerts] = useState([]);
   const [alertsLoading, setAlertsLoading] = useState(true);
 
@@ -33,7 +32,6 @@ const Dashboard = () => {
         
         if (incomeResponse.success) {
           const income = incomeResponse.income || [];
-          setIncomeRecords(income);
           totalIncome = income.reduce((sum, record) => sum + (parseFloat(record.total_price) || 0), 0);
         }
         

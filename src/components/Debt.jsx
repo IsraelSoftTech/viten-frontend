@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaPlus, FaEdit, FaTrash, FaTimes, FaSave, FaDownload, FaSearch } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaTimes, FaSave, FaDownload } from 'react-icons/fa';
 import { debtAPI, purchasesAPI, configurationAPI } from '../api';
 import { formatCurrency as formatCurrencyUtil, fetchDefaultCurrency } from '../utils/currency';
 import { generateReceipt } from '../utils/receiptGenerator';
@@ -188,6 +188,7 @@ const Debt = () => {
       unit_price: parseFloat(formData.selling_price) || 0,
       total_price: totalPrice,
       amount_payable_now: amountPayable,
+      balance_owed: balanceOwed,
       customer_signature: formData.customer_signature,
       electronic_signature: formData.electronic_signature,
       client_name: formData.client_name,
