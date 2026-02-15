@@ -31,10 +31,33 @@ const Income = () => {
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [printRecord, setPrintRecord] = useState(null);
   const [receiptOpts, setReceiptOpts] = useState(null);
+  const [highlightedId, setHighlightedId] = useState(null);
+  const [sortBy, setSortBy] = useState('date-desc');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
 
   useEffect(() => {
     fetchIncome();
     fetchInventory();
+  }, []);
+
+  useEffect(() => {
+    // Listen for search result selection
+    const handleSearchResult = (event) => {
+      const result = event.detail;
+      if (result.type === 'Sale') {
+        setHighlightedId(result.id);
+        setTimeout(() => {
+          const element = document.getElementById(`income-row-${result.id}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
+      }
+    };
+
+    window.addEventListener('searchResultSelected', handleSearchResult);
+    return () => window.removeEventListener('searchResultSelected', handleSearchResult);
   }, []);
 
   useEffect(() => {
@@ -353,6 +376,40 @@ const Income = () => {
     });
   };
 
+  const getDisplayedRecords = () => {
+    let records = [...incomeRecords];
+
+    // Apply date filter
+    if (filterDateFrom) {
+      records = records.filter(r => new Date(r.date) >= new Date(filterDateFrom));
+    }
+    if (filterDateTo) {
+      records = records.filter(r => new Date(r.date) <= new Date(filterDateTo));
+    }
+
+    // Apply sorting
+    records.sort((a, b) => {
+      switch (sortBy) {
+        case 'date-asc':
+          return new Date(a.date) - new Date(b.date);
+        case 'date-desc':
+          return new Date(b.date) - new Date(a.date);
+        case 'name-asc':
+          return (a.name || '').localeCompare(b.name || '');
+        case 'name-desc':
+          return (b.name || '').localeCompare(a.name || '');
+        case 'price-asc':
+          return (parseFloat(a.total_price) || 0) - (parseFloat(b.total_price) || 0);
+        case 'price-desc':
+          return (parseFloat(b.total_price) || 0) - (parseFloat(a.total_price) || 0);
+        default:
+          return 0;
+      }
+    });
+
+    return records;
+  };
+
   return (
     <div className="income-container">
       {successMessage && (
@@ -371,6 +428,41 @@ const Income = () => {
       </div>
 
       {error && <div className="error-message">{error}</div>}
+
+      <div className="sort-filter-controls">
+        <div className="sort-controls">
+          <label htmlFor="sort-select">Sort by:</label>
+          <select id="sort-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+            <option value="date-desc">Date (Newest)</option>
+            <option value="date-asc">Date (Oldest)</option>
+            <option value="name-asc">Name (A-Z)</option>
+            <option value="name-desc">Name (Z-A)</option>
+            <option value="price-asc">Total Price (Low-High)</option>
+            <option value="price-desc">Total Price (High-Low)</option>
+          </select>
+        </div>
+        <div className="date-filter-controls">
+          <label htmlFor="filter-from">From:</label>
+          <input
+            type="date"
+            id="filter-from"
+            value={filterDateFrom}
+            onChange={(e) => setFilterDateFrom(e.target.value)}
+          />
+          <label htmlFor="filter-to">To:</label>
+          <input
+            type="date"
+            id="filter-to"
+            value={filterDateTo}
+            onChange={(e) => setFilterDateTo(e.target.value)}
+          />
+          {(filterDateFrom || filterDateTo) && (
+            <button className="clear-filter-btn" onClick={() => { setFilterDateFrom(''); setFilterDateTo(''); }}>
+              Clear Filter
+            </button>
+          )}
+        </div>
+      </div>
 
       {showPrintModal && (
         <div className="receipt-print-modal-overlay" onClick={() => { setShowPrintModal(false); setPrintRecord(null); setReceiptOpts(null); }}>
@@ -587,15 +679,19 @@ const Income = () => {
               </tr>
             </thead>
             <tbody>
-              {incomeRecords.length === 0 ? (
+              {getDisplayedRecords().length === 0 ? (
                 <tr>
                   <td colSpan="8" className="no-records">
                     No sales records found. Click "New" to add one.
                   </td>
                 </tr>
               ) : (
-                incomeRecords.map((record) => (
-                  <tr key={record.id}>
+                getDisplayedRecords().map((record) => (
+                  <tr 
+                    key={record.id} 
+                    id={`income-row-${record.id}`}
+                    className={`income-row ${highlightedId === record.id ? 'highlighted' : ''}`}
+                  >
                     <td>{formatDate(record.date)}</td>
                     <td>{record.name}</td>
                     <td>{record.pcs}</td>
