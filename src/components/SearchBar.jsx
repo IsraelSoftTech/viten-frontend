@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { FaSearch, FaTimes } from 'react-icons/fa';
 import { incomeAPI, debtAPI, expensesAPI, purchasesAPI, debtRepaymentAPI } from '../api';
 import './SearchBar.css';
@@ -10,7 +10,6 @@ const SearchBar = () => {
   const [showResults, setShowResults] = useState(false);
   const [searching, setSearching] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
   const searchRef = useRef(null);
   const resultsRef = useRef(null);
 

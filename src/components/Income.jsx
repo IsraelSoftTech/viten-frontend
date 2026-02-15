@@ -240,6 +240,7 @@ const Income = () => {
     const c = configResponse.success && configResponse.configuration ? configResponse.configuration : {};
     return {
       appName: c.app_name || 'Shop Accountant',
+      logoUrl: c.logo_url || null,
       location: c.location || null,
       items: c.items || [],
       thank_you_message: c.receipt_thank_you_message,

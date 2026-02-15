@@ -49,7 +49,7 @@ function getBarcodeDataUrl(text) {
 
 // --- 58mm thermal receipt (small printer) - B&W, table design like report ---
 function buildReceipt58mm(doc, record, type, opts) {
-  const { appName, location, seller_name } = opts;
+  const { appName, logoUrl, location, seller_name } = opts;
   const W = 58;
   const marginH = 3;
   const topMargin = 5;
@@ -59,6 +59,18 @@ function buildReceipt58mm(doc, record, type, opts) {
 
   setBw(doc);
   doc.setLineWidth(0.2);
+
+  // ----- Logo (if available) -----
+  if (logoUrl) {
+    try {
+      const logoWidth = 35;
+      const logoHeight = 15;
+      doc.addImage(logoUrl, 'PNG', (W - logoWidth) / 2, y, logoWidth, logoHeight);
+      y += logoHeight + 2;
+    } catch (e) {
+      console.warn('Failed to add logo to receipt:', e);
+    }
+  }
 
   // ----- Header -----
   doc.setFontSize(9);
@@ -207,7 +219,7 @@ function buildReceipt58mm(doc, record, type, opts) {
 
 // --- Normal A4 receipt - B&W, professional ---
 function buildReceiptNormal(doc, record, type, opts) {
-  const { appName, location, items, seller_name } = opts;
+  const { appName, logoUrl, location, items, seller_name } = opts;
   const pageWidth = 210;
   const pageHeight = 297;
   const receiptWidth = pageWidth - 20;
@@ -225,6 +237,15 @@ function buildReceiptNormal(doc, record, type, opts) {
   doc.rect(startX, startY, receiptWidth, 22, 'F');
   doc.setDrawColor(0, 0, 0);
   doc.rect(startX, startY, receiptWidth, 22);
+
+  // Add logo if available
+  if (logoUrl) {
+    try {
+      doc.addImage(logoUrl, 'PNG', startX + 40, startY + 2, 18, 18);
+    } catch (e) {
+      console.warn('Failed to add logo to receipt:', e);
+    }
+  }
 
   doc.setTextColor(0, 0, 0);
   doc.setFontSize(16);
@@ -380,7 +401,7 @@ function buildReceiptNormal(doc, record, type, opts) {
 
 // --- 58mm repayment receipt (table design like report) ---
 function buildReceipt58mmRepayment(doc, record, opts) {
-  const { appName, location, seller_name } = opts;
+  const { appName, logoUrl, location, seller_name } = opts;
   const W = 58;
   const marginH = 3;
   const topMargin = 5;
@@ -389,6 +410,19 @@ function buildReceipt58mmRepayment(doc, record, opts) {
   let y = topMargin;
   setBw(doc);
   doc.setLineWidth(0.2);
+
+  // ----- Logo (if available) -----
+  if (logoUrl) {
+    try {
+      const logoWidth = 35;
+      const logoHeight = 15;
+      doc.addImage(logoUrl, 'PNG', (W - logoWidth) / 2, y, logoWidth, logoHeight);
+      y += logoHeight + 2;
+    } catch (e) {
+      console.warn('Failed to add logo to receipt:', e);
+    }
+  }
+
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.text(appName.toUpperCase(), W / 2, y, { align: 'center' });
@@ -463,7 +497,7 @@ function buildReceipt58mmRepayment(doc, record, opts) {
 
 // --- Normal A4 repayment receipt ---
 function buildReceiptNormalRepayment(doc, record, opts) {
-  const { appName, location, seller_name } = opts;
+  const { appName, logoUrl, location, seller_name } = opts;
   const startX = 10;
   const startY = 10;
   const receiptWidth = 190;
@@ -476,6 +510,16 @@ function buildReceiptNormalRepayment(doc, record, opts) {
   doc.setFillColor(240, 240, 240);
   doc.rect(startX, startY, receiptWidth, 22, 'F');
   doc.rect(startX, startY, receiptWidth, 22);
+
+  // Add logo if available
+  if (logoUrl) {
+    try {
+      doc.addImage(logoUrl, 'PNG', startX + 100, startY + 2, 18, 18);
+    } catch (e) {
+      console.warn('Failed to add logo to receipt:', e);
+    }
+  }
+
   doc.setTextColor(0, 0, 0);
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
@@ -532,6 +576,7 @@ function buildReceiptNormalRepayment(doc, record, opts) {
 export const generateReceipt = (record, type = 'sale', options = {}) => {
   const {
     appName = 'Shop Accountant',
+    logoUrl = null,
     location = null,
     items = [],
     seller_name = (record && record.seller_name) || '',
@@ -541,7 +586,7 @@ export const generateReceipt = (record, type = 'sale', options = {}) => {
     action = 'download'
   } = options;
 
-  const opts = { appName, location, items, seller_name, thank_you_message, items_received_message };
+  const opts = { appName, logoUrl, location, items, seller_name, thank_you_message, items_received_message };
 
   if (type === 'repayment') {
     if (printerType === 'small') {
