@@ -17,13 +17,15 @@ import {
   FaSlidersH,
   FaExclamationTriangle,
   FaLock,
-  FaTimes
+  FaTimes,
+  FaSignOutAlt
 } from 'react-icons/fa';
 import './Sidebar.css';
 
 const Sidebar = ({ isOpen, onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
   const [settingsExpanded, setSettingsExpanded] = useState(
     location.pathname.startsWith('/settings')
   );
@@ -33,6 +35,17 @@ const Sidebar = ({ isOpen, onClose }) => {
     else document.body.classList.remove('sidebar-open');
     return () => document.body.classList.remove('sidebar-open');
   }, [isOpen]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    navigate('/login');
+    onClose?.();
+  };
+
+  const getFirstLetter = (name) => {
+    if (!name) return 'U';
+    return name.trim()[0].toUpperCase();
+  };
 
   const menuItems = [
     { path: '/dashboard', icon: FaThLarge, label: 'Dashboard' },
@@ -68,6 +81,19 @@ const Sidebar = ({ isOpen, onClose }) => {
         <FaTimes />
       </button>
       <nav className="sidebar-nav">
+        {/* User Profile Section */}
+        <div className="sidebar-user-section">
+          <div className="sidebar-user-profile">
+            <div className="sidebar-profile-circle">
+              {getFirstLetter(user.full_name || user.username || 'User')}
+            </div>
+            <div className="sidebar-user-info">
+              <div className="sidebar-user-name">{user.full_name || user.username || 'User'}</div>
+              <div className="sidebar-user-email">{user.email || ''}</div>
+            </div>
+          </div>
+        </div>
+
         {menuItems.map((item) => {
           const Icon = item.icon;
           
@@ -127,6 +153,12 @@ const Sidebar = ({ isOpen, onClose }) => {
             </div>
           )}
         </div>
+
+        {/* Logout Button */}
+        <button className="sidebar-logout-btn" onClick={handleLogout}>
+          <FaSignOutAlt className="nav-icon" />
+          <span className="nav-label">Logout</span>
+        </button>
       </nav>
     </aside>
   );

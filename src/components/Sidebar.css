@@ -10,7 +10,7 @@
   transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
-/* Mobile: overlay drawer */
+/* Mobile: overlay drawer - smooth slide animation */
 @media (max-width: 991px) {
   .sidebar {
     position: fixed;
@@ -23,6 +23,7 @@
     width: 280px;
     min-width: unset;
     box-shadow: none;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .sidebar.sidebar--open {
@@ -200,4 +201,87 @@
 
 .submenu-item:hover .submenu-indicator {
   background-color: #FF6B35;
+}
+
+/* User Profile Section */
+.sidebar-user-section {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 8px;
+}
+
+.sidebar-user-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sidebar-profile-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #FF6B35;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 18px;
+  font-family: 'Poppins', sans-serif;
+  flex-shrink: 0;
+}
+
+.sidebar-user-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-user-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111b21;
+  font-family: 'Poppins', sans-serif;
+  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-user-email {
+  font-size: 13px;
+  color: #667781;
+  font-family: 'Poppins', sans-serif;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Logout Button */
+.sidebar-logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  color: #dc3545;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  margin: 8px 10px 20px 10px;
+  border-radius: 8px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  width: calc(100% - 20px);
+}
+
+.sidebar-logout-btn:hover {
+  background-color: #fee;
+  color: #c82333;
+  transform: translateX(4px);
+}
+
+.sidebar-logout-btn .nav-icon {
+  color: inherit;
 }

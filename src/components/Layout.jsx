@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
+import SearchBar from './SearchBar';
 import './Layout.css';
 
 const SIDEBAR_BREAKPOINT = 992;
@@ -22,7 +23,8 @@ const Layout = () => {
 
   return (
     <div className="layout-container">
-      <TopBar onMenuToggle={toggleSidebar} sidebarOpen={sidebarOpen} />
+      <TopBar onMenuToggle={toggleSidebar} />
+      <SearchBar />
       <div className="layout-content">
         <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
         <div className={`sidebar-backdrop ${sidebarOpen ? 'sidebar-backdrop--open' : ''}`} aria-hidden="true" onClick={closeSidebar} />

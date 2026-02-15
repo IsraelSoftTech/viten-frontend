@@ -10,17 +10,44 @@
 
 .spinner-wrapper {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 24px;
 }
 
 .spinner {
-  width: 60px;
-  height: 60px;
-  border: 5px solid #f3f3f3;
-  border-top: 5px solid #FF6B35;
+  width: 64px;
+  height: 64px;
+  position: relative;
+}
+
+.spinner::before,
+.spinner::after {
+  content: '';
+  position: absolute;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  border: 4px solid transparent;
+  border-top-color: #FF6B35;
+  animation: spin 1s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+}
+
+.spinner::before {
+  width: 64px;
+  height: 64px;
+  border-width: 4px;
+  animation-duration: 1s;
+}
+
+.spinner::after {
+  width: 48px;
+  height: 48px;
+  top: 8px;
+  left: 8px;
+  border-width: 3px;
+  border-top-color: #25D366;
+  animation-duration: 0.8s;
+  animation-direction: reverse;
 }
 
 @keyframes spin {
@@ -29,10 +56,10 @@
 }
 
 .powered-by {
-  position: absolute;
-  bottom: 30px;
   font-size: 14px;
-  color: #666666;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 400;
+  color: #667781;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  margin-top: 8px;
 }
