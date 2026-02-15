@@ -23,8 +23,28 @@ const Purchase = () => {
     unit_price: '',
     total_amount: '',
     description: '',
-    supplier_name: ''
+    supplier_name: '',
+    image: null,
+    image_preview: ''
   });
+
+  // Lightbox for viewing full-size item images
+  const [lightboxSrc, setLightboxSrc] = useState('');
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') setLightboxSrc(''); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  useEffect(() => {
+    // prevent background scroll while lightbox is open
+    document.body.style.overflow = lightboxSrc ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [lightboxSrc]);
+
+  const openLightbox = (src) => setLightboxSrc(src || '');
+  const closeLightbox = () => setLightboxSrc('');
 
   useEffect(() => {
     fetchPurchases();
@@ -88,7 +108,9 @@ const Purchase = () => {
       unit_price: '',
       total_amount: '',
       description: '',
-      supplier_name: ''
+      supplier_name: '',
+      image: null,
+      image_preview: ''
     });
   };
 
@@ -102,7 +124,9 @@ const Purchase = () => {
       unit_price: record.unit_price || '',
       total_amount: record.total_amount || '',
       description: record.description || '',
-      supplier_name: record.supplier_name || ''
+      supplier_name: record.supplier_name || '',
+      image: null,
+      image_preview: record.image_url || ''
     });
   };
 
@@ -116,8 +140,31 @@ const Purchase = () => {
       unit_price: '',
       total_amount: '',
       description: '',
-      supplier_name: ''
+      supplier_name: '',
+      image: null,
+      image_preview: ''
     });
+  };
+
+  const handleImageChange = (file) => {
+    if (!file) {
+      setFormData(prev => ({ ...prev, image: null, image_preview: '' }));
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image must be 5 MB or smaller');
+      return;
+    }
+    const allowed = ['image/jpeg','image/png','image/gif','image/webp'];
+    if (!allowed.includes(file.type)) {
+      setError('Only JPG/PNG/GIF/WEBP images are allowed');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setFormData(prev => ({ ...prev, image: file, image_preview: ev.target.result }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e) => {
@@ -142,15 +189,32 @@ const Purchase = () => {
 
     try {
       let response;
-      if (editingId) {
-        response = await purchasesAPI.updatePurchase(editingId, submitData);
-        if (response.success) {
-          setSuccessMessage('Purchase record updated successfully!');
+
+      // If an image file is present, send multipart/form-data
+      if (formData.image) {
+        const fd = new FormData();
+        fd.append('date', submitData.date);
+        fd.append('name', submitData.name);
+        fd.append('pcs', String(submitData.pcs));
+        fd.append('unit_price', String(submitData.unit_price));
+        if (submitData.description) fd.append('description', submitData.description);
+        if (submitData.supplier_name) fd.append('supplier_name', submitData.supplier_name);
+        fd.append('image', formData.image);
+
+        if (editingId) {
+          response = await purchasesAPI.updatePurchase(editingId, fd);
+          if (response.success) setSuccessMessage('Purchase record updated successfully!');
+        } else {
+          response = await purchasesAPI.createPurchase(fd);
+          if (response.success) setSuccessMessage('Purchase record created successfully!');
         }
       } else {
-        response = await purchasesAPI.createPurchase(submitData);
-        if (response.success) {
-          setSuccessMessage('Purchase record created successfully!');
+        if (editingId) {
+          response = await purchasesAPI.updatePurchase(editingId, submitData);
+          if (response.success) setSuccessMessage('Purchase record updated successfully!');
+        } else {
+          response = await purchasesAPI.createPurchase(submitData);
+          if (response.success) setSuccessMessage('Purchase record created successfully!');
         }
       }
 
@@ -415,6 +479,22 @@ const Purchase = () => {
                 />
               </div>
 
+              <div className="form-group">
+                <label htmlFor="item_picture">Item Picture</label>
+                <input
+                  type="file"
+                  id="item_picture"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files && e.target.files[0];
+                    handleImageChange(file);
+                  }}
+                />
+                {formData.image_preview && (
+                  <img src={formData.image_preview} alt="preview" className="purchase-thumbnail-preview" />
+                )}
+              </div>
+
               <div className="form-actions">
                 <button type="button" className="cancel-btn" onClick={handleCancel}>
                   Cancel
@@ -437,6 +517,7 @@ const Purchase = () => {
             <thead>
               <tr>
                 <th>Date</th>
+                <th>Picture</th>
                 <th>Name</th>
                 <th>Pcs</th>
                 <th>Unit Price</th>
@@ -449,7 +530,7 @@ const Purchase = () => {
             <tbody>
               {getDisplayedRecords().length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="no-records">
+                  <td colSpan="9" className="no-records">
                     No purchase records found. Click "New" to add one.
                   </td>
                 </tr>
@@ -461,6 +542,20 @@ const Purchase = () => {
                     className={`purchase-row ${highlightedId === record.id ? 'highlighted' : ''}`}
                   >
                     <td>{formatDate(record.date)}</td>
+                    <td>
+                      {record.image_url ? (
+                        <div
+                          className="thumbnail-wrapper"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => openLightbox(record.image_url)}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLightbox(record.image_url); } }}
+                          title="View image"
+                        >
+                          <img src={record.image_url} className="purchase-thumbnail" alt={record.name || 'item'} />
+                        </div>
+                      ) : '-'}
+                    </td>
                     <td>{record.name}</td>
                     <td>{record.pcs}</td>
                     <td>{formatCurrency(record.unit_price)}</td>
@@ -490,6 +585,18 @@ const Purchase = () => {
               )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Lightbox / full-image viewer */}
+      {lightboxSrc && (
+        <div className="image-lightbox" onClick={closeLightbox} role="dialog" aria-modal="true">
+          <div className="image-lightbox-content" onClick={(e) => e.stopPropagation()}>
+            <button className="lightbox-close" onClick={closeLightbox} aria-label="Close image">
+              <FaTimes />
+            </button>
+            <img src={lightboxSrc} alt="Item full" />
+          </div>
         </div>
       )}
     </div>

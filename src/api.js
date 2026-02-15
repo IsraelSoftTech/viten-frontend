@@ -256,12 +256,11 @@ export const purchasesAPI = {
   // Create purchase record
   createPurchase: async (purchaseData) => {
     try {
+      const isForm = purchaseData instanceof FormData;
       const response = await fetch(`${API_BASE_URL}/purchases`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(purchaseData),
+        headers: isForm ? {} : { 'Content-Type': 'application/json' },
+        body: isForm ? purchaseData : JSON.stringify(purchaseData),
       });
 
       const data = await response.json();
@@ -277,12 +276,11 @@ export const purchasesAPI = {
   // Update purchase record
   updatePurchase: async (id, purchaseData) => {
     try {
+      const isForm = purchaseData instanceof FormData;
       const response = await fetch(`${API_BASE_URL}/purchases/${id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(purchaseData),
+        headers: isForm ? {} : { 'Content-Type': 'application/json' },
+        body: isForm ? purchaseData : JSON.stringify(purchaseData),
       });
 
       const data = await response.json();
