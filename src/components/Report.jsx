@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FaFileDownload, FaPrint, FaCalendarAlt, FaChartLine, FaShoppingCart, FaMoneyBillWave, FaCreditCard, FaExclamationTriangle, FaCheckCircle, FaBriefcase, FaCalendarDay, FaBox } from 'react-icons/fa';
+import { FaPrint, FaCalendarAlt, FaChartLine, FaShoppingCart, FaMoneyBillWave, FaCreditCard, FaExclamationTriangle, FaCheckCircle, FaBriefcase, FaCalendarDay, FaBox } from 'react-icons/fa';
 import { purchasesAPI, incomeAPI, debtAPI, expensesAPI, currencyAPI, configurationAPI } from '../api';
 import { formatCurrency as formatCurrencyUtil, fetchDefaultCurrency } from '../utils/currency';
 import jsPDF from 'jspdf';

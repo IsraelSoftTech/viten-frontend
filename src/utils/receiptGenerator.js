@@ -600,10 +600,6 @@ export const generateReceipt = (record, type = 'sale', options = {}) => {
     unit: 'mm',
     format: 'a4'
   });
-  const pageWidth = 210;
-  const pageHeight = 297;
-  const receiptWidth = pageWidth - 20;
-  const receiptHeight = pageHeight - 30;
   buildReceiptNormal(doc, record, type, opts);
   const timestamp = new Date().toISOString().split('T')[0];
   const filename = type === 'sale'
