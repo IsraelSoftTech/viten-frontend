@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import JsBarcode from 'jsbarcode';
+import { getLocalDate } from './date';
 
 // Format date for receipt
 const formatDate = (dateString) => {
@@ -604,7 +605,7 @@ export const generateReceipt = (record, type = 'sale', options = {}) => {
     }
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     buildReceiptNormalRepayment(doc, record, opts);
-    const timestamp = new Date().toISOString().split('T')[0];
+    const timestamp = getLocalDate();
     const filename = `${appName.replace(/\s+/g, '-')}-Repay-${record.id}-${timestamp}.pdf`;
     if (action === 'print') {
       const blob = doc.output('blob');
@@ -646,7 +647,7 @@ export const generateReceipt = (record, type = 'sale', options = {}) => {
     format: 'a4'
   });
   buildReceiptNormal(doc, record, type, opts);
-  const timestamp = new Date().toISOString().split('T')[0];
+  const timestamp = getLocalDate();
   const filename = type === 'sale'
     ? `${appName.replace(/\s+/g, '-')}-Sale-${record.id}-${timestamp}.pdf`
     : `${appName.replace(/\s+/g, '-')}-Debt-${record.id}-${timestamp}.pdf`;

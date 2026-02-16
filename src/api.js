@@ -314,6 +314,24 @@ export const purchasesAPI = {
   },
 };
 
+// Gain API endpoints
+export const gainAPI = {
+  // Get gain/loss for a date or date range
+  getGain: async (params = {}) => {
+    try {
+      const qs = new URLSearchParams(params).toString();
+      const response = await fetch(`${API_BASE_URL}/gain${qs ? `?${qs}` : ''}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return { success: false, message: 'Network error. Please check if the server is running.' };
+    }
+  }
+};
+
 // Expenses API endpoints
 export const expensesAPI = {
   // Get all expenses records

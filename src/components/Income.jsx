@@ -5,6 +5,7 @@ import { formatCurrency as formatCurrencyUtil, fetchDefaultCurrency } from '../u
 import { generateReceipt } from '../utils/receiptGenerator';
 import SuccessMessage from './SuccessMessage';
 import './Income.css';
+import { getLocalDate } from '../utils/date';
 
 const Income = () => {
   const [incomeRecords, setIncomeRecords] = useState([]);
@@ -28,6 +29,8 @@ const Income = () => {
     client_phone: '',
     seller_name: ''
   });
+
+
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [printRecord, setPrintRecord] = useState(null);
   const [receiptOpts, setReceiptOpts] = useState(null);
@@ -107,7 +110,7 @@ const Income = () => {
     setSelectedInventoryItem(null);
     setShowDropdown(false);
     setFormData({
-      date: new Date().toISOString().split('T')[0],
+      date: getLocalDate(),
       name: '',
       pcs: '',
       unit_price: '',

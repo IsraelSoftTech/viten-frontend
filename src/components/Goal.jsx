@@ -3,6 +3,7 @@ import { FaPlus, FaEdit, FaCheck, FaTrash, FaTimes, FaLock } from 'react-icons/f
 import { goalsAPI, configurationAPI } from '../api';
 import SuccessMessage from './SuccessMessage';
 import './Goal.css';
+import { getLocalDate } from '../utils/date';
 
 const GOAL_PIN_SESSION_KEY = 'goalPinUnlocked';
 
@@ -11,7 +12,7 @@ const TAB_ACTIVE = 'active';
 const TAB_ACCOMPLISHED = 'accomplished';
 const TAB_TRASHED = 'trashed';
 
-const todayStr = () => new Date().toISOString().slice(0, 10);
+const todayStr = getLocalDate;
 
 const Goal = () => {
   const [goals, setGoals] = useState([]);

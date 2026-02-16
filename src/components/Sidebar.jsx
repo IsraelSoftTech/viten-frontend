@@ -6,6 +6,7 @@ import {
   FaShoppingCart,
   FaCreditCard, 
   FaChartBar, 
+  FaChartLine,
   FaBullseye,
   FaCog, 
   FaUsers,
@@ -54,6 +55,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: '/debts', icon: FaFileInvoiceDollar, label: 'Debts' },
     { path: '/expenses', icon: FaCreditCard, label: 'Expenses' },
     { path: '/report', icon: FaChartBar, label: 'Report' },
+    { path: '/gain', icon: FaChartLine, label: 'Gain/Loss' },
     { path: '/goal', icon: FaBullseye, label: 'Goal' },
     { path: '/users', icon: FaUsers, label: 'Users' },
   ];

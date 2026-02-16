@@ -5,6 +5,7 @@ import { formatCurrency as formatCurrencyUtil, fetchDefaultCurrency } from '../u
 import { generateReceipt } from '../utils/receiptGenerator';
 import SuccessMessage from './SuccessMessage';
 import './Debt.css';
+import { getLocalDate } from '../utils/date';
 
 const Debt = () => {
   const [debtRecords, setDebtRecords] = useState([]);
@@ -46,7 +47,7 @@ const Debt = () => {
   const [repayReceiptNo, setRepayReceiptNo] = useState('');
   const [repayDebtInfo, setRepayDebtInfo] = useState(null);
   const [repayAmount, setRepayAmount] = useState('');
-  const [repayDate, setRepayDate] = useState(new Date().toISOString().split('T')[0]);
+  const [repayDate, setRepayDate] = useState(getLocalDate());
   const [repaySellerName, setRepaySellerName] = useState('');
   const [repaySubmitting, setRepaySubmitting] = useState(false);
   const [editingRepayId, setEditingRepayId] = useState(null);
@@ -163,7 +164,7 @@ const Debt = () => {
     setSelectedInventoryItem(null);
     setShowDropdown(false);
     setFormData({
-      date: new Date().toISOString().split('T')[0],
+      date: getLocalDate(),
       name: '',
       pcs: '',
       unit_price: '',
@@ -450,7 +451,7 @@ const Debt = () => {
   const handleRepayEdit = (rec) => {
     setEditingRepayId(rec.id);
     setRepayEditAmount(String(rec.amount));
-    setRepayEditDate(rec.payment_date || new Date().toISOString().split('T')[0]);
+    setRepayEditDate(rec.payment_date || getLocalDate());
     setRepayEditSeller(rec.seller_name || '');
   };
 
@@ -976,7 +977,7 @@ const Debt = () => {
       {activeTab === 'repay' && (
         <div className="debt-repay-section">
           <div className="debt-repay-header">
-            <button type="button" className="new-debt-btn repay-action-btn" onClick={() => { setShowRepayForm(true); setRepayDebtInfo(null); setRepayReceiptNo(''); setRepayAmount(''); setRepayDate(new Date().toISOString().split('T')[0]); setRepaySellerName(''); setError(''); }}>
+            <button type="button" className="new-debt-btn repay-action-btn" onClick={() => { setShowRepayForm(true); setRepayDebtInfo(null); setRepayReceiptNo(''); setRepayAmount(''); setRepayDate(getLocalDate()); setRepaySellerName(''); setError(''); }}>
               <FaPlus className="btn-icon" />
               Repay
             </button>

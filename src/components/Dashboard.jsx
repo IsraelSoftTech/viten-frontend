@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaMoneyBillWave, FaCreditCard, FaShoppingCart, FaBalanceScale, FaExclamationTriangle } from 'react-icons/fa';
+import { FaMoneyBillWave, FaCreditCard, FaShoppingCart, FaExclamationTriangle } from 'react-icons/fa';
 import { incomeAPI, expensesAPI, purchasesAPI, stockDeficiencyAPI } from '../api';
 import { formatCurrency as formatCurrencyUtil, fetchDefaultCurrency } from '../utils/currency';
 import './Dashboard.css';
@@ -156,13 +156,7 @@ const Dashboard = () => {
       color: '#FF9800',
       bgColor: '#FFF8F0'
     },
-    {
-      title: 'Net Balance',
-      value: formatCurrency(stats.netBalance),
-      icon: FaBalanceScale,
-      color: stats.netBalance >= 0 ? '#2196F3' : '#f44336',
-      bgColor: stats.netBalance >= 0 ? '#F0F7FF' : '#FFEBEE'
-    }
+
   ];
 
   const netAmount = stats.netBalance;

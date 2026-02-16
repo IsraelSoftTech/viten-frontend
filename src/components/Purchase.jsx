@@ -4,6 +4,7 @@ import { purchasesAPI } from '../api';
 import { formatCurrency as formatCurrencyUtil, fetchDefaultCurrency } from '../utils/currency';
 import SuccessMessage from './SuccessMessage';
 import './Purchase.css';
+import { getLocalDate } from '../utils/date';
 
 const Purchase = () => {
   const [purchaseRecords, setPurchaseRecords] = useState([]);
@@ -27,6 +28,8 @@ const Purchase = () => {
     image: null,
     image_preview: ''
   });
+
+
 
   // Lightbox for viewing full-size item images
   const [lightboxSrc, setLightboxSrc] = useState('');
@@ -102,7 +105,7 @@ const Purchase = () => {
     setShowForm(true);
     setEditingId(null);
     setFormData({
-      date: new Date().toISOString().split('T')[0],
+      date: getLocalDate(),
       name: '',
       pcs: '',
       unit_price: '',

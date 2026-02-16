@@ -4,12 +4,14 @@ import { purchasesAPI, incomeAPI, debtAPI, expensesAPI, currencyAPI, configurati
 import { formatCurrency as formatCurrencyUtil, fetchDefaultCurrency } from '../utils/currency';
 import jsPDF from 'jspdf';
 import './Report.css';
+import { getLocalDate, getFirstOfMonthLocal, extractYYYYMMDD } from '../utils/date';
 
 const Report = () => {
   const [loading, setLoading] = useState(false);
+
   const [dateRange, setDateRange] = useState({
-    startDate: new Date(new Date().setDate(1)).toISOString().split('T')[0], // First day of current month
-    endDate: new Date().toISOString().split('T')[0] // Today
+    startDate: getFirstOfMonthLocal(),
+    endDate: getLocalDate()
   });
   const [currencyMode, setCurrencyMode] = useState('single'); // 'single' or 'all'
   const [selectedCurrency, setSelectedCurrency] = useState(null);
@@ -32,7 +34,7 @@ const Report = () => {
   const [dailyMostSoldItems, setDailyMostSoldItems] = useState([]);
   const [dailyLeastSoldItems, setDailyLeastSoldItems] = useState([]);
   const [activeTab, setActiveTab] = useState('daily'); // 'daily', 'executive', or 'stocks'
-  const [dailyDate, setDailyDate] = useState(new Date().toISOString().split('T')[0]); // Today's date
+  const [dailyDate, setDailyDate] = useState(getLocalDate()); // Today's date
   const [stocksData, setStocksData] = useState([]);
   const [showReportPrintModal, setShowReportPrintModal] = useState(false);
   const [reportPrintKind, setReportPrintKind] = useState(null); // 'executive' | 'daily' | 'stocks'
@@ -166,7 +168,7 @@ const Report = () => {
       // Filter sales by selected date
       if (incomeRes.success) {
         const filteredSales = (incomeRes.income || []).filter(record => {
-          const recordDate = new Date(record.date).toISOString().split('T')[0];
+          const recordDate = extractYYYYMMDD(record.date);
           return recordDate === dailyDate;
         });
         setDailySales(filteredSales);
@@ -221,7 +223,7 @@ const Report = () => {
       // Filter debts by selected date
       if (debtsRes.success) {
         const filteredDebts = (debtsRes.debts || []).filter(record => {
-          const recordDate = new Date(record.date).toISOString().split('T')[0];
+          const recordDate = extractYYYYMMDD(record.date);
           return recordDate === dailyDate;
         });
         setDailyDebts(filteredDebts);

@@ -4,6 +4,7 @@ import { expensesAPI } from '../api';
 import { formatCurrency as formatCurrencyUtil, fetchDefaultCurrency } from '../utils/currency';
 import SuccessMessage from './SuccessMessage';
 import './Expenses.css';
+import { getLocalDate } from '../utils/date';
 
 const Expenses = () => {
   const [expenseRecords, setExpenseRecords] = useState([]);
@@ -22,6 +23,8 @@ const Expenses = () => {
     amount: '',
     description: ''
   });
+
+
 
   useEffect(() => {
     fetchExpenses();
@@ -67,7 +70,7 @@ const Expenses = () => {
     setShowForm(true);
     setEditingId(null);
     setFormData({
-      date: new Date().toISOString().split('T')[0],
+      date: getLocalDate(),
       name: '',
       amount: '',
       description: ''
