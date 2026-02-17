@@ -1,12 +1,72 @@
 import React, { useEffect, useState } from 'react';
+import { FaLock } from 'react-icons/fa';
+import { configurationAPI } from '../api';
 import { FaCalendarAlt, FaPrint } from 'react-icons/fa';
 import { gainAPI } from '../api';
 import { formatCurrency as formatCurrencyUtil } from '../utils/currency';
 import './Gain.css';
 import { getLocalDate, getFirstOfMonthLocal, extractYYYYMMDD } from '../utils/date';
 
+const GAIN_PIN_SESSION_KEY = 'goalPinUnlocked'; // Use same session key as Goal
+
 const Gain = () => {
   const [mode, setMode] = useState('daily'); // 'daily' or 'range'
+  // PIN lock state
+  const [pinCheckDone, setPinCheckDone] = useState(false);
+  const [pinRequired, setPinRequired] = useState(false);
+  const [pinUnlocked, setPinUnlocked] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState('');
+  const [pinVerifying, setPinVerifying] = useState(false);
+
+  useEffect(() => {
+    const checkPin = async () => {
+      try {
+        const res = await configurationAPI.getGoalPinStatus();
+        if (res.success && res.hasPin) {
+          setPinRequired(true);
+          if (sessionStorage.getItem(GAIN_PIN_SESSION_KEY) === '1') {
+            setPinUnlocked(true);
+          }
+        } else {
+          setPinUnlocked(true);
+        }
+      } catch (e) {
+        setPinUnlocked(true);
+      } finally {
+        setPinCheckDone(true);
+      }
+    };
+    checkPin();
+    return () => {
+      sessionStorage.removeItem(GAIN_PIN_SESSION_KEY);
+    };
+  }, []);
+
+  const handlePinSubmit = async (e) => {
+    e.preventDefault();
+    setPinError('');
+    if (!pinInput.trim()) {
+      setPinError('Enter PIN');
+      return;
+    }
+    setPinVerifying(true);
+    try {
+      const res = await configurationAPI.verifyGoalPin(pinInput);
+      if (res.success && res.valid) {
+        sessionStorage.setItem(GAIN_PIN_SESSION_KEY, '1');
+        setPinUnlocked(true);
+        setPinInput('');
+      } else {
+        setPinError('Incorrect PIN');
+        setPinInput('');
+      }
+    } catch (e) {
+      setPinError('Verification failed');
+    } finally {
+      setPinVerifying(false);
+    }
+  };
 
   const [date, setDate] = useState(getLocalDate());
   const [startDate, setStartDate] = useState(getFirstOfMonthLocal());
@@ -148,6 +208,51 @@ const Gain = () => {
     w.focus();
     setTimeout(() => { w.print(); }, 500);
   };
+
+  if (!pinCheckDone) {
+    return (
+      <div className="gain-container">
+        <div className="gain-loading">Checking access...</div>
+      </div>
+    );
+  }
+
+  if (pinRequired && !pinUnlocked) {
+    return (
+      <div className="gain-container">
+        <div className="goal-pin-overlay">
+          <div className="goal-pin-box">
+            <div className="goal-pin-header">
+              <FaLock className="goal-pin-icon" />
+              <h2 className="goal-pin-title">Gain / Loss is protected</h2>
+              <p className="goal-pin-desc">Enter the PIN to access Gain / Loss.</p>
+            </div>
+            <form onSubmit={handlePinSubmit} className="goal-pin-form">
+              <input
+                type="password"
+                value={pinInput}
+                onChange={(e) => { setPinInput(e.target.value); setPinError(''); }}
+                className="goal-pin-input"
+                placeholder="Enter PIN"
+                autoFocus
+                autoComplete="off"
+                maxLength={20}
+                disabled={pinVerifying}
+              />
+              {pinError && <div className="goal-pin-error">{pinError}</div>}
+              <button
+                type="submit"
+                className="goal-pin-submit"
+                disabled={pinVerifying || !pinInput.trim()}
+              >
+                {pinVerifying ? 'Verifying...' : 'Unlock'}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="gain-container">

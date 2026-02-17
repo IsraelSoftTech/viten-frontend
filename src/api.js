@@ -763,6 +763,23 @@ export const configurationAPI = {
     }
   },
 
+  // Delete logo
+  deleteLogo: async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/configuration/logo`, {
+        method: 'DELETE'
+      });
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Network error. Please check if the server is running.',
+      };
+    }
+  },
+
   // Update location
   updateLocation: async (location) => {
     try {

@@ -220,7 +220,7 @@ const Users = () => {
                             <FaTimes />
                           </button>
                         </div>
-                      ) : (
+                      ) : user.username !== 'admin1234' ? (
                         <div className="action-buttons">
                           <button
                             className="action-btn edit-btn"
@@ -237,7 +237,7 @@ const Users = () => {
                             <FaTrash />
                           </button>
                         </div>
-                      )}
+                      ) : null}
                     </td>
                   </tr>
                 ))

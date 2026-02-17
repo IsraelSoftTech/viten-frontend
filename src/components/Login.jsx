@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { userAPI } from '../api';
 import SuccessMessage from './SuccessMessage';
+import Spinner from './Spinner';
 import './Login.css';
 
 const Login = () => {
@@ -12,6 +13,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [showLoader, setShowLoader] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -28,10 +30,11 @@ const Login = () => {
           localStorage.setItem('user', JSON.stringify(response.user));
         }
         setSuccessMessage('Login successful!');
-        // Navigate to Dashboard after successful login (after message animation completes)
+        setShowLoader(true);
         setTimeout(() => {
+          setShowLoader(false);
           navigate('/dashboard');
-        }, 8000);
+        }, 2000);
       } else {
         setError(response.message || 'Login failed. Please try again.');
       }
@@ -41,6 +44,10 @@ const Login = () => {
       setLoading(false);
     }
   };
+
+  if (showLoader) {
+    return <Spinner />;
+  }
 
   return (
     <div className="login-container">

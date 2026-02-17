@@ -33,7 +33,7 @@ const Report = () => {
   const [dailyDebtsOwed, setDailyDebtsOwed] = useState(0);
   const [dailyMostSoldItems, setDailyMostSoldItems] = useState([]);
   const [dailyLeastSoldItems, setDailyLeastSoldItems] = useState([]);
-  const [activeTab, setActiveTab] = useState('daily'); // 'daily', 'executive', or 'stocks'
+  const [activeTab, setActiveTab] = useState('executive'); // default to Executive (clean records view)
   const [dailyDate, setDailyDate] = useState(getLocalDate()); // Today's date
   const [stocksData, setStocksData] = useState([]);
   const [showReportPrintModal, setShowReportPrintModal] = useState(false);
@@ -437,50 +437,29 @@ const Report = () => {
       y += 5;
       doc.line(marginH, y, W - marginH, y);
       y += 3;
-      const invT = inventory.reduce((s, i) => s + (parseFloat(i.total_amount) || 0), 0);
-      const salT = sales.reduce((s, r) => s + (parseFloat(r.total_price) || 0), 0);
-      const debT = debts.reduce((s, r) => s + (parseFloat(r.total_price) || 0), 0);
-      const debPaid = debts.reduce((s, r) => s + (parseFloat(r.amount_payable_now) || 0), 0);
-      const expT = expenses.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-      const debOwed = debT - debPaid;
-      const calcGL = () => {
-        const itemProfitLoss = {};
-        [...sales, ...debts].forEach(record => {
-          const itemName = record.name;
-          const invItem = inventory.find(inv => inv.name === itemName);
-          const costPrice = invItem ? parseFloat(invItem.unit_price) || 0 : 0;
-          const sellingPrice = parseFloat(record.unit_price) || 0;
-          const pcsSold = parseInt(record.pcs) || 0;
-          const totalCost = costPrice * pcsSold;
-          const totalRevenue = sellingPrice * pcsSold;
-          const profitLoss = totalRevenue - totalCost;
-          if (!itemProfitLoss[itemName]) itemProfitLoss[itemName] = { name: itemName, costPrice, sellingPrice, pcsSold: 0, totalCost: 0, totalRevenue: 0, profitLoss: 0 };
-          itemProfitLoss[itemName].pcsSold += pcsSold;
-          itemProfitLoss[itemName].totalCost += totalCost;
-          itemProfitLoss[itemName].totalRevenue += totalRevenue;
-          itemProfitLoss[itemName].profitLoss += profitLoss;
-        });
-        return Object.values(itemProfitLoss);
-      };
-      const gainLossData58 = calcGL();
-      const totalGainLoss = gainLossData58.reduce((sum, item) => sum + (item.profitLoss || 0), 0);
-      const overallTotal = inventoryTotal + salesTotal + debOwed + expT;
-      const invRows = inventory.map(i => [(i.name || 'N/A').substring(0, 14), String(i.pcs || 0), fmt(parseFloat(i.unit_price)), fmt(parseFloat(i.total_amount))]);
-      invRows.push(['TOTAL', '', '', fmt(invT)]);
-      drawSmallTable('INVENTORY', ['Item', 'Pcs', 'Unit', 'Total'], invRows, [20, 5, 10, 15]);
-      const salesRows = sales.map(s => [fmtDate(s.date).substring(0, 5), (s.name || 'N/A').substring(0, 8), String(s.pcs || 0), fmt(parseFloat(s.unit_price)), fmt(parseFloat(s.total_price))]);
-      salesRows.push(['TOTAL', '', '', '', fmt(salT)]);
-      drawSmallTable('SALES', ['Date', 'Item', 'Pcs', 'Unit', 'Tot'], salesRows, [10, 12, 4, 8, 16]);
-      const debtsRows = debts.map(d => [fmtDate(d.date).substring(0, 5), (d.name || 'N/A').substring(0, 8), String(d.pcs || 0), fmt(parseFloat(d.total_price)), fmt(parseFloat(d.amount_payable_now)), fmt(parseFloat(d.balance_owed))]);
-      debtsRows.push(['TOTAL', '', '', fmt(debT), fmt(debPaid), fmt(debOwed)]);
-      drawSmallTable('DEBTS', ['Date', 'Item', 'Pcs', 'Tot', 'Paid', 'Owed'], debtsRows, [8, 10, 4, 8, 8, 12]);
-      const expRows = expenses.map(e => [fmtDate(e.date).substring(0, 5), (e.category || '-').substring(0, 6), (e.description || '-').substring(0, 12), fmt(parseFloat(e.amount))]);
-      expRows.push(['TOTAL', '', '', fmt(expT)]);
-      drawSmallTable('EXPENSES', ['Date', 'Cat', 'Desc', 'Amt'], expRows, [10, 8, 16, 16]);
-      const summaryRows = [['Total Inventory', fmt(invT)], ['Total Sales', fmt(salT)], ['Debts Owed', fmt(debOwed)], ['Total Expenses', fmt(expT)], ['Gain/Loss', fmt(totalGainLoss)], ['Overall Total', fmt(overallTotal)]];
-      drawSmallTable('SUMMARY', ['Head', 'Amount'], summaryRows, [28, 22]);
-      const glRows = gainLossData58.map(item => [(item.name || 'N/A').substring(0, 12), fmt(item.costPrice), String(item.pcsSold), fmt(item.sellingPrice), fmt(item.profitLoss)]);
-      drawSmallTable('GAIN/LOSS', ['Item', 'Cost', 'Pcs', 'Sell', 'G/L'], glRows, [16, 8, 4, 8, 14]);
+
+      // --- Simplified Executive: Sales, Debts, Expenses (no inventory / no gain-loss) ---
+      const salesRows = sales.map(s => {
+        const invItem = inventory.find(inv => inv.name === s.name);
+        const unitCost = invItem ? parseFloat(invItem.unit_price) || 0 : 0;
+        const unitSelling = s.unit_price ? parseFloat(s.unit_price) : ((parseFloat(s.total_price) || 0) / (parseInt(s.pcs) || 1));
+        return [fmtDate(s.date).substring(0, 5), (s.name || 'N/A').substring(0, 12), String(s.pcs || 0), fmt(unitCost), fmt(unitSelling)];
+      });
+      if (salesRows.length === 0) salesRows.push(['-', 'No sales', '-', '-', '-']);
+      drawSmallTable('SALES', ['Date', 'Item', 'Pcs', 'Cost', 'Sell'], salesRows, [10, 20, 4, 8, 16]);
+
+      const debtsRows = debts.map(d => {
+        const invItem = inventory.find(inv => inv.name === d.name);
+        const unitCost = invItem ? parseFloat(invItem.unit_price) || 0 : 0;
+        const unitSelling = d.unit_price ? parseFloat(d.unit_price) : ((parseFloat(d.total_price) || 0) / (parseInt(d.pcs) || 1));
+        return [fmtDate(d.date).substring(0, 5), (d.name || 'N/A').substring(0, 12), String(d.pcs || 0), fmt(unitCost), fmt(unitSelling)];
+      });
+      if (debtsRows.length === 0) debtsRows.push(['-', 'No debts', '-', '-', '-']);
+      drawSmallTable('DEBTS', ['Date', 'Item', 'Pcs', 'Cost', 'Sell'], debtsRows, [10, 20, 4, 8, 16]);
+
+      const expRows = expenses.map(e => [fmtDate(e.date).substring(0, 5), (e.description || e.category || '-').substring(0, 12), '-', fmt(parseFloat(e.amount) || 0), '-']);
+      if (expRows.length === 0) expRows.push(['-', 'No expenses', '-', '-', '-']);
+      drawSmallTable('EXPENSES', ['Date', 'Item', 'Pcs', 'Cost', 'Sell'], expRows, [10, 20, 4, 8, 16]);
       addPageIfNeeded(6);
       doc.setFontSize(4);
       doc.setFont('helvetica', 'italic');
@@ -821,376 +800,82 @@ const Report = () => {
       return y;
     };
 
-    // Inventory Table
-    const inventoryColWidths = [40, 15, 22, 23]; // Proportional widths that sum to 100
-    const inventoryHeaders = ['Item Name', 'Pcs', 'Unit Price', 'Total Value'];
-    const inventoryRows = inventory.map(item => [
-      (item.name || 'N/A').substring(0, 25),
-      String(item.pcs || 0),
-      formatCurrencyForPDF(parseFloat(item.unit_price) || 0),
-      formatCurrencyForPDF(parseFloat(item.total_amount) || 0)
-    ]);
-    inventoryRows.push(['TOTAL', '', '', formatCurrencyForPDF(inventoryTotal)]);
-    
-    currentY = drawTable(
-      inventoryHeaders,
-      inventoryRows,
-      startX,
-      currentY,
-      inventoryColWidths,
-      'INVENTORY',
-      true,
-      { r: 200, g: 220, b: 240 }
-    ) + 5;
+    // --- Executive print: only Sales, Debts, Expenses (mirror new UI) ---
 
-    // Sales Table
-    const salesColWidths = [25, 25, 15, 18, 17]; // Proportional widths that sum to 100 (increased Date column)
-    const salesHeaders = ['Date', 'Item', 'Pcs', 'Unit Selling Price', 'Total'];
-    const salesRows = sales.map(sale => [
-      formatDateForPDF(sale.date),
-      (sale.name || 'N/A').substring(0, 18),
-      String(sale.pcs || 0),
-      formatCurrencyForPDF(parseFloat(sale.unit_price) || 0),
-      formatCurrencyForPDF(parseFloat(sale.total_price) || 0)
-    ]);
-    salesRows.push(['TOTAL', '', '', '', formatCurrencyForPDF(salesTotal)]);
-    
+    // Sales Table (Date | Item | Pcs | Unit cost price | Unit selling price)
+    const salesColWidths = [24, 40, 10, 13, 13];
+    const salesHeaders = ['Date', 'Item', 'Pcs', 'Unit cost price', 'Unit selling price'];
+    const salesRows = sales.map(sale => {
+      const invItem = inventory.find(inv => inv.name === sale.name);
+      const unitCost = invItem ? parseFloat(invItem.unit_price) || 0 : 0;
+      const unitSelling = sale.unit_price ? parseFloat(sale.unit_price) : ((parseFloat(sale.total_price) || 0) / (parseInt(sale.pcs) || 1));
+      return [
+        formatDateForPDF(sale.date),
+        (sale.name || 'N/A').substring(0, 30),
+        String(sale.pcs || 0),
+        formatCurrencyForPDF(unitCost),
+        formatCurrencyForPDF(unitSelling)
+      ];
+    });
+    if (salesRows.length === 0) salesRows.push(['N/A', 'No sales in period', '-', '-', '-']);
+
     currentY = drawTable(
       salesHeaders,
       salesRows,
       startX,
       currentY,
       salesColWidths,
-      'SALES',
-      true,
-      { r: 200, g: 220, b: 240 }
+      'SALES'
     ) + 5;
 
-    // Debts Table
-    const debtsColWidths = [22, 20, 12, 15, 15, 16]; // Proportional widths that sum to 100 (increased Date column)
-    const debtsHeaders = ['Date', 'Item', 'Pcs', 'Total', 'Paid', 'Owed'];
-    const debtsRows = debts.map(debt => [
-      formatDateForPDF(debt.date),
-      (debt.name || 'N/A').substring(0, 18),
-      String(debt.pcs || 0),
-      formatCurrencyForPDF(parseFloat(debt.total_price) || 0),
-      formatCurrencyForPDF(parseFloat(debt.amount_payable_now) || 0),
-      formatCurrencyForPDF(parseFloat(debt.balance_owed) || 0)
-    ]);
-    const totalDebtsOwed = debtsTotal - debtsPaid;
-    debtsRows.push(['TOTAL', '', '', formatCurrencyForPDF(debtsTotal), formatCurrencyForPDF(debtsPaid), formatCurrencyForPDF(totalDebtsOwed)]);
-    
+    // Debts Table (same columns)
+    const debtsColWidths = [24, 40, 10, 13, 13];
+    const debtsHeaders = ['Date', 'Item', 'Pcs', 'Unit cost price', 'Unit selling price'];
+    const debtsRows = debts.map(debt => {
+      const invItem = inventory.find(inv => inv.name === debt.name);
+      const unitCost = invItem ? parseFloat(invItem.unit_price) || 0 : 0;
+      const unitSelling = debt.unit_price ? parseFloat(debt.unit_price) : ((parseFloat(debt.total_price) || 0) / (parseInt(debt.pcs) || 1));
+      return [
+        formatDateForPDF(debt.date),
+        (debt.name || 'N/A').substring(0, 30),
+        String(debt.pcs || 0),
+        formatCurrencyForPDF(unitCost),
+        formatCurrencyForPDF(unitSelling)
+      ];
+    });
+    if (debtsRows.length === 0) debtsRows.push(['N/A', 'No debts in period', '-', '-', '-']);
+
     currentY = drawTable(
       debtsHeaders,
       debtsRows,
       startX,
       currentY,
       debtsColWidths,
-      'DEBTS',
-      true,
-      { r: 200, g: 220, b: 240 }
+      'DEBTS'
     ) + 5;
 
-    // Expenses Table
-    const expensesColWidths = [25, 18, 37, 20]; // Proportional widths that sum to 100 (increased Date column)
-    const expensesHeaders = ['Date', 'Category', 'Description', 'Amount'];
+    // Expenses Table (Date | Item | Pcs | Unit cost price | Unit selling price)
+    const expensesColWidths = [24, 40, 10, 13, 13];
+    const expensesHeaders = ['Date', 'Item', 'Pcs', 'Unit cost price', 'Unit selling price'];
     const expensesRows = expenses.map(exp => [
       formatDateForPDF(exp.date),
-      (exp.category || 'N/A').substring(0, 15),
-      (exp.description || 'N/A').substring(0, 28),
-      formatCurrencyForPDF(parseFloat(exp.amount) || 0)
+      (exp.description || exp.category || 'Expense').substring(0, 30),
+      '-',
+      formatCurrencyForPDF(parseFloat(exp.amount) || 0),
+      '-'
     ]);
-    expensesRows.push(['TOTAL', '', '', formatCurrencyForPDF(expensesTotal)]);
-    
+    if (expensesRows.length === 0) expensesRows.push(['N/A', 'No expenses in period', '-', '-', '-']);
+
     currentY = drawTable(
       expensesHeaders,
       expensesRows,
       startX,
       currentY,
       expensesColWidths,
-      'EXPENSES',
-      true,
-      { r: 200, g: 220, b: 240 }
+      'EXPENSES'
     ) + 5;
 
-    // Summary Table
-    const summaryColWidths = [60, 40]; // Proportional widths that sum to 100
-    const summaryHeaders = ['Head', 'Amount'];
-    const overallTotal = inventoryTotal + salesTotal + totalDebtsOwed + expensesTotal;
-    
-    // Calculate total gain/loss from gainLossData
-    const totalGainLoss = gainLossData.reduce((sum, item) => sum + (item.profitLoss || 0), 0);
-    
-    const summaryRows = [
-      ['Total Inventory', formatCurrencyForPDF(inventoryTotal)],
-      ['Total Sales', formatCurrencyForPDF(salesTotal)],
-      ['Total Debts Owed', formatCurrencyForPDF(totalDebtsOwed)],
-      ['Total Expenses', formatCurrencyForPDF(expensesTotal)],
-      ['Total Gain/Loss', formatCurrencyForPDF(totalGainLoss)],
-      ['Overall Total', formatCurrencyForPDF(overallTotal)]
-    ];
-    
-    currentY = drawTable(
-      summaryHeaders,
-      summaryRows,
-      startX,
-      currentY,
-      summaryColWidths,
-      'SUMMARY',
-      true,
-      { r: 200, g: 220, b: 240 }
-    ) + 5;
-
-    // Gain/Loss Table
-    const gainLossColWidths = [30, 18, 12, 18, 22]; // Proportional widths that sum to 100
-    const gainLossHeaders = ['Item Name', 'Unit Cost Price', 'Pcs Sold', 'Unit Selling Price', 'Net Gain/Loss'];
-    const gainLossRows = gainLossData.map(item => {
-      const profitLoss = item.profitLoss;
-      return [
-        (item.name || 'N/A').substring(0, 22),
-        formatCurrencyForPDF(item.costPrice),
-        String(item.pcsSold),
-        formatCurrencyForPDF(item.sellingPrice),
-        formatCurrencyForPDF(profitLoss)
-      ];
-    });
-    
-    // Calculate proportional column widths for gain/loss table
-    const totalGainLossColWidths = gainLossColWidths.reduce((a, b) => a + b, 0);
-    const proportionalGainLossColWidths = gainLossColWidths.map(width => (width / totalGainLossColWidths) * tableWidth);
-    
-    // Draw gain/loss table with color coding
-    let gainLossY = currentY;
-    const rowHeight = 5;
-    
-    // Check page break
-    if (checkPageBreak(5 + 5 + (gainLossRows.length * rowHeight) + 5)) {
-      gainLossY = currentY;
-    }
-    
-    // Title
-    doc.setFillColor(240, 240, 240); // Light blue (lighter)
-    doc.rect(startX, gainLossY, tableWidth, 5, 'F');
-    doc.setTextColor(0, 0, 0); // Dark text on light background
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    doc.text('GAIN/LOSS ANALYSIS', startX + 2, gainLossY + 3.5);
-    gainLossY += 5;
-    
-    // Header
-    doc.setFillColor(240, 240, 240); // Light blue (lighter)
-    doc.rect(startX, gainLossY, tableWidth, rowHeight, 'F');
-    doc.setTextColor(0, 0, 0); // Dark text on light background
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.1);
-    doc.rect(startX, gainLossY, tableWidth, rowHeight);
-    
-    let x = startX;
-    gainLossHeaders.forEach((header, index) => {
-      if (index > 0) doc.line(x, gainLossY, x, gainLossY + rowHeight);
-      doc.text(header, x + 1, gainLossY + 3.5);
-      x += proportionalGainLossColWidths[index];
-    });
-    gainLossY += rowHeight;
-    
-    // Rows with color coding
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    gainLossRows.forEach((row, rowIndex) => {
-      // Check page break
-      if (gainLossY + rowHeight > maxPageHeight) {
-        // Add footer to current page
-        const footerY = pageHeight - margin - 10;
-        doc.setDrawColor(200, 200, 200);
-        doc.setLineWidth(0.3);
-        doc.line(startX, footerY, pageWidth - margin, footerY);
-        doc.setFontSize(7);
-        doc.setTextColor(100, 100, 100);
-        doc.setFont('helvetica', 'italic');
-        doc.text('Generated by ' + appName, startX + (pageWidth - margin * 2) / 2, footerY + 5, { align: 'center' });
-        
-        // Draw header again on new page
-        doc.addPage();
-        currentY = margin;
-        drawHeader();
-        gainLossY = currentY;
-        
-        // Redraw title
-        doc.setFillColor(240, 240, 240); // Light blue (lighter)
-        doc.rect(startX, gainLossY, tableWidth, 5, 'F');
-        doc.setTextColor(0, 0, 0); // Dark text on light background
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'bold');
-        doc.text('GAIN/LOSS ANALYSIS (continued)', startX + 2, gainLossY + 3.5);
-        gainLossY += 5;
-        
-        // Redraw header
-        doc.setFillColor(240, 240, 240); // Light blue (lighter)
-        doc.rect(startX, gainLossY, tableWidth, rowHeight, 'F');
-        doc.setTextColor(0, 0, 0); // Dark text on light background
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'bold');
-        doc.setDrawColor(200, 200, 200);
-        doc.setLineWidth(0.1);
-        doc.rect(startX, gainLossY, tableWidth, rowHeight);
-        
-        x = startX;
-        gainLossHeaders.forEach((header, index) => {
-          if (index > 0) doc.line(x, gainLossY, x, gainLossY + rowHeight);
-          doc.text(header, x + 1, gainLossY + 3.5);
-          x += proportionalGainLossColWidths[index];
-        });
-        gainLossY += rowHeight;
-      }
-      
-      const item = gainLossData[rowIndex];
-      const isLoss = item.profitLoss < 0;
-      
-      // Row background
-      if (rowIndex % 2 === 0) {
-        doc.setFillColor(252, 252, 252); // Very light grey
-        doc.rect(startX, gainLossY, tableWidth, rowHeight, 'F');
-      }
-      
-      // Draw borders
-      doc.setDrawColor(200, 200, 200);
-      doc.setLineWidth(0.1);
-      doc.rect(startX, gainLossY, tableWidth, rowHeight);
-      
-      x = startX;
-      row.forEach((cell, colIndex) => {
-        // Color code the last column (gain/loss)
-        if (colIndex === 4) {
-          doc.setTextColor(isLoss ? 244 : 76, isLoss ? 67 : 175, isLoss ? 54 : 80);
-        } else {
-          doc.setTextColor(0, 0, 0);
-        }
-        
-        // Ensure text fits within cell boundaries - clip to prevent overflow
-        const maxCellWidth = Math.max(1, proportionalGainLossColWidths[colIndex] - 2);
-        const cellText = doc.splitTextToSize(String(cell || ''), maxCellWidth);
-        // Only render the first line to prevent overflow into next column
-        if (cellText && cellText.length > 0) {
-          doc.text(cellText[0], x + 1, gainLossY + 3.5);
-        }
-        
-        // Draw vertical border at the END of this column (before moving to next)
-        if (colIndex < row.length - 1) {
-          x += proportionalGainLossColWidths[colIndex];
-          doc.line(x, gainLossY, x, gainLossY + rowHeight);
-        } else {
-          x += proportionalGainLossColWidths[colIndex];
-        }
-      });
-      gainLossY += rowHeight;
-    });
-    
-    // Update currentY to be right after the gain/loss table
-    currentY = gainLossY + 5;
-
-    // Most Sold Items - simple text format (comes right after Gain/Loss table)
-    if (mostSoldItems.length > 0) {
-      // Check page break
-      if (checkPageBreak(20)) {
-        currentY = margin;
-        drawHeader();
-      }
-      
-      // Title (no background highlight)
-      doc.setTextColor(0, 0, 0);
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
-      doc.text('MOST SOLD ITEMS', startX + 2, currentY + 3.5);
-      currentY += 7;
-      
-      // Items as text
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.setTextColor(0, 0, 0);
-      
-      mostSoldItems.slice(0, 10).forEach((item) => {
-        // Format: "Item Name: X Pcs (AmountFCFA)"
-        const itemName = (item.name || 'N/A').trim();
-        const pcs = item.count || 0;
-        // Format currency - extract just the FCFA number and add FCFA at the end
-        const amount = item.total || 0;
-        const formattedAmount = new Intl.NumberFormat('en-US', {
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 0
-        }).format(amount);
-        const formattedText = `${itemName}: ${pcs} Pcs (${formattedAmount}FCFA)`;
-        
-        // Check page break before each item
-        if (currentY + 5 > maxPageHeight) {
-          doc.addPage();
-          currentY = margin;
-          drawHeader();
-          currentY += 7;
-        }
-        
-        doc.text(formattedText, startX + 2, currentY);
-        currentY += 5;
-      });
-      
-      currentY += 3;
-    }
-
-    // Least sold items (sorted by count ascending) - simple text format
-    // Get all items, exclude those already in mostSoldItems, then get bottom 10
-    const allItems = Object.values(itemSalesCount);
-    const mostSoldItemNames = new Set(mostSoldItems.map(item => item.name));
-    const leastSoldItems = allItems
-      .filter(item => !mostSoldItemNames.has(item.name))
-      .sort((a, b) => a.count - b.count)
-      .slice(0, 10);
-    if (leastSoldItems.length > 0) {
-      // Check page break
-      if (checkPageBreak(20)) {
-        currentY = margin;
-        drawHeader();
-      }
-      
-      // Title (no background highlight)
-      doc.setTextColor(0, 0, 0);
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
-      doc.text('LEAST SOLD ITEMS', startX + 2, currentY + 3.5);
-      currentY += 7;
-      
-      // Items as text
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.setTextColor(0, 0, 0);
-      
-      leastSoldItems.forEach((item) => {
-        // Format: "Item Name: X Pcs (AmountFCFA)"
-        const itemName = (item.name || 'N/A').trim();
-        const pcs = item.count || 0;
-        // Format currency - extract just the FCFA number and add FCFA at the end
-        const amount = item.total || 0;
-        const formattedAmount = new Intl.NumberFormat('en-US', {
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 0
-        }).format(amount);
-        const formattedText = `${itemName}: ${pcs} Pcs (${formattedAmount}FCFA)`;
-        
-        // Check page break before each item
-        if (currentY + 5 > maxPageHeight) {
-          doc.addPage();
-          currentY = margin;
-          drawHeader();
-          currentY += 7;
-        }
-        
-        doc.text(formattedText, startX + 2, currentY);
-        currentY += 5;
-      });
-      
-      currentY += 3;
-    }
-
+    // (no summary / no gain-loss / no most/least sold for Executive print)
     // Footer
     const footerY = pageHeight - margin - 10;
     doc.setDrawColor(200, 200, 200);
@@ -2276,121 +1961,124 @@ const Report = () => {
         <div className="loading-message">Generating report...</div>
       ) : (
         <div className="report-content">
-          {/* Inventory Summary */}
+          {/* Clean executive tables: Sales, Debts, Expenses (no gain/loss) */}
+
+          {/* Sales */}
           <section className="report-section">
             <h2 className="section-title">
-              <FaShoppingCart className="section-icon" />
-              Inventory Summary
+              <FaChartLine className="section-icon" />
+              Sales ({formatDate(dateRange.startDate)} - {formatDate(dateRange.endDate)})
             </h2>
-            <div className="summary-card">
-              <div className="summary-header">
-                <span className="summary-label">Total Inventory Value</span>
-                <span className="summary-value">{formatCurrencyAmount(inventoryTotal)}</span>
-              </div>
-            </div>
             <div className="table-wrapper">
-              <table className="report-table">
+              <table className="report-table simple-record-table">
                 <thead>
                   <tr>
-                    <th>Item Name</th>
-                    <th>Pieces</th>
-                    <th>Unit Price</th>
-                    <th>Total Value</th>
+                    <th>Date</th>
+                    <th>Item</th>
+                    <th>Pcs</th>
+                    <th>Unit cost price</th>
+                    <th>Unit selling price</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {inventory.length === 0 ? (
+                  {sales.length === 0 ? (
                     <tr>
-                      <td colSpan="4" className="no-data">No inventory items found</td>
+                      <td colSpan="5" className="no-data">No sales records for the selected period</td>
                     </tr>
                   ) : (
-                    inventory.map((item, index) => (
-                      <tr key={item.id || index}>
-                        <td>{item.name}</td>
-                        <td>{item.pcs || 0}</td>
-                        <td>{formatCurrencyAmount(parseFloat(item.unit_price) || 0)}</td>
-                        <td className="total-cell">{formatCurrencyAmount(parseFloat(item.total_amount) || 0)}</td>
-                      </tr>
-                    ))
+                    sales.map((s, idx) => {
+                      const inventoryItem = inventory.find(inv => inv.name === s.name);
+                      const unitCost = inventoryItem ? parseFloat(inventoryItem.unit_price) || 0 : 0;
+                      const unitSelling = s.unit_price ? parseFloat(s.unit_price) : ((parseFloat(s.total_price) || 0) / (parseInt(s.pcs) || 1));
+                      return (
+                        <tr key={s.id || idx}>
+                          <td>{formatDate(s.date)}</td>
+                          <td>{s.name || 'N/A'}</td>
+                          <td>{s.pcs || 0}</td>
+                          <td className="total-cell">{formatCurrencyAmount(unitCost)}</td>
+                          <td className="total-cell">{formatCurrencyAmount(unitSelling)}</td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
             </div>
           </section>
 
-          {/* Sales Summary */}
-          <section className="report-section">
-            <h2 className="section-title">
-              <FaChartLine className="section-icon" />
-              Sales Summary ({formatDate(dateRange.startDate)} - {formatDate(dateRange.endDate)})
-            </h2>
-            <div className="summary-card">
-              <div className="summary-header">
-                <span className="summary-label">Total Sales</span>
-                <span className="summary-value sales-value">{formatCurrencyAmount(salesTotal)}</span>
-              </div>
-              <div className="summary-detail">Number of Sales: {sales.length}</div>
-            </div>
-          </section>
-
-          {/* Debts Summary */}
+          {/* Debts */}
           <section className="report-section">
             <h2 className="section-title">
               <FaCreditCard className="section-icon" />
-              Debts Summary ({formatDate(dateRange.startDate)} - {formatDate(dateRange.endDate)})
+              Debts ({formatDate(dateRange.startDate)} - {formatDate(dateRange.endDate)})
             </h2>
-            <div className="summary-card">
-              <div className="summary-header">
-                <span className="summary-label">Total Debt Amount</span>
-                <span className="summary-value">{formatCurrencyAmount(debtsTotal)}</span>
-              </div>
-              <div className="summary-header">
-                <span className="summary-label">Amount Paid</span>
-                <span className="summary-value">{formatCurrencyAmount(debtsPaid)}</span>
-              </div>
-              <div className="summary-header">
-                <span className="summary-label">Outstanding Balance</span>
-                <span className="summary-value debt-value">{formatCurrencyAmount(debtsTotal - debtsPaid)}</span>
-              </div>
-              <div className="summary-detail">Number of Debt Records: {debts.length}</div>
-            </div>
-          </section>
-
-          {/* Expenses Summary */}
-          <section className="report-section">
-            <h2 className="section-title">
-              <FaMoneyBillWave className="section-icon" />
-              Expenses Summary ({formatDate(dateRange.startDate)} - {formatDate(dateRange.endDate)})
-            </h2>
-            <div className="summary-card">
-              <div className="summary-header">
-                <span className="summary-label">Total Expenses</span>
-                <span className="summary-value expense-value">{formatCurrencyAmount(expensesTotal)}</span>
-              </div>
-              <div className="summary-detail">Number of Expenses: {expenses.length}</div>
-            </div>
             <div className="table-wrapper">
-              <table className="report-table">
+              <table className="report-table simple-record-table">
                 <thead>
                   <tr>
                     <th>Date</th>
-                    <th>Category</th>
-                    <th>Description</th>
-                    <th>Amount</th>
+                    <th>Item</th>
+                    <th>Pcs</th>
+                    <th>Unit cost price</th>
+                    <th>Unit selling price</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {debts.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" className="no-data">No debt records for the selected period</td>
+                    </tr>
+                  ) : (
+                    debts.map((d, idx) => {
+                      const inventoryItem = inventory.find(inv => inv.name === d.name);
+                      const unitCost = inventoryItem ? parseFloat(inventoryItem.unit_price) || 0 : 0;
+                      const unitSelling = d.unit_price ? parseFloat(d.unit_price) : ((parseFloat(d.total_price) || 0) / (parseInt(d.pcs) || 1));
+                      return (
+                        <tr key={d.id || idx}>
+                          <td>{formatDate(d.date)}</td>
+                          <td>{d.name || 'N/A'}</td>
+                          <td>{d.pcs || 0}</td>
+                          <td className="total-cell">{formatCurrencyAmount(unitCost)}</td>
+                          <td className="total-cell">{formatCurrencyAmount(unitSelling)}</td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          {/* Expenses */}
+          <section className="report-section">
+            <h2 className="section-title">
+              <FaMoneyBillWave className="section-icon" />
+              Expenses ({formatDate(dateRange.startDate)} - {formatDate(dateRange.endDate)})
+            </h2>
+            <div className="table-wrapper">
+              <table className="report-table simple-record-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Item</th>
+                    <th>Pcs</th>
+                    <th>Unit cost price</th>
+                    <th>Unit selling price</th>
                   </tr>
                 </thead>
                 <tbody>
                   {expenses.length === 0 ? (
                     <tr>
-                      <td colSpan="4" className="no-data">No expenses found in this period</td>
+                      <td colSpan="5" className="no-data">No expense records for the selected period</td>
                     </tr>
                   ) : (
-                    expenses.map((expense, index) => (
-                      <tr key={expense.id || index}>
-                        <td>{formatDate(expense.date)}</td>
-                        <td>{expense.category || 'N/A'}</td>
-                        <td>{expense.description || 'N/A'}</td>
-                        <td className="total-cell">{formatCurrencyAmount(parseFloat(expense.amount) || 0)}</td>
+                    expenses.map((e, idx) => (
+                      <tr key={e.id || idx}>
+                        <td>{formatDate(e.date)}</td>
+                        <td>{e.description || e.category || 'Expense'}</td>
+                        <td>-</td>
+                        <td className="total-cell">{formatCurrencyAmount(parseFloat(e.amount) || 0)}</td>
+                        <td className="total-cell">-</td>
                       </tr>
                     ))
                   )}
@@ -2398,100 +2086,6 @@ const Report = () => {
               </table>
             </div>
           </section>
-
-          {/* Gain/Loss */}
-          <section className="report-section">
-            <h2 className="section-title">
-              {gainLoss >= 0 ? (
-                <FaCheckCircle className="section-icon gain-icon" />
-              ) : (
-                <FaExclamationTriangle className="section-icon loss-icon" />
-              )}
-              Financial Summary
-            </h2>
-            <div className={`summary-card ${gainLoss >= 0 ? 'gain-card' : 'loss-card'}`}>
-              <div className="summary-header">
-                <span className="summary-label">Total Revenue (Sales + Debts Paid)</span>
-                <span className="summary-value">{formatCurrencyAmount(totalRevenue)}</span>
-              </div>
-              <div className="summary-header">
-                <span className="summary-label">Total Costs (Expenses)</span>
-                <span className="summary-value">{formatCurrencyAmount(expensesTotal)}</span>
-              </div>
-              <div className="summary-header highlight">
-                <span className="summary-label">Net {gainLoss >= 0 ? 'Gain' : 'Loss'}</span>
-                <span className={`summary-value ${gainLoss >= 0 ? 'gain-value' : 'loss-value'}`}>
-                  {formatCurrencyAmount(Math.abs(gainLoss))}
-                </span>
-              </div>
-            </div>
-          </section>
-
-          {/* Most Sold Items */}
-          <section className="report-section">
-            <h2 className="section-title">
-              <FaChartLine className="section-icon" />
-              Most Sold Items
-            </h2>
-            <div className="table-wrapper">
-              <table className="report-table">
-                <thead>
-                  <tr>
-                    <th>Rank</th>
-                    <th>Item Name</th>
-                    <th>Pieces Sold</th>
-                    <th>Total Revenue</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {mostSoldItems.length === 0 ? (
-                    <tr>
-                      <td colSpan="4" className="no-data">No sales data available</td>
-                    </tr>
-                  ) : (
-                    mostSoldItems.map((item, index) => (
-                      <tr key={index}>
-                        <td className="rank-cell">{index + 1}</td>
-                        <td>{item.name}</td>
-                        <td>{item.count}</td>
-                        <td className="total-cell">{formatCurrencyAmount(item.total)}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          {/* Low Sales Items */}
-          {lowSalesItems.length > 0 && (
-            <section className="report-section">
-              <h2 className="section-title">
-                <FaExclamationTriangle className="section-icon warning-icon" />
-                Items with Low Sales (&lt; 5 pieces)
-              </h2>
-              <div className="table-wrapper">
-                <table className="report-table">
-                  <thead>
-                    <tr>
-                      <th>Item Name</th>
-                      <th>Pieces Sold</th>
-                      <th>Total Revenue</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {lowSalesItems.map((item, index) => (
-                      <tr key={index}>
-                        <td>{item.name}</td>
-                        <td className="warning-cell">{item.count}</td>
-                        <td className="total-cell">{formatCurrencyAmount(item.total)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          )}
         </div>
       )}
         </>

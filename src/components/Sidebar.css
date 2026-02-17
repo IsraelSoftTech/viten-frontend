@@ -107,16 +107,20 @@
   transform: translateX(4px);
 }
 
+
 .nav-item.active {
-  background-color: #FF6B35;
-  color: #ffffff;
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
+  background-color: #cfcfcf;
+  color: #585858;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.08);
+  border-radius: 10px;
+  transition: background 0.2s, color 0.2s;
 }
 
 .nav-item.active:hover {
-  background-color: #ff5722;
-  transform: translateX(4px);
+
+  color: #fffefd;
+  transform: translateX(1px);
 }
 
 .nav-icon {

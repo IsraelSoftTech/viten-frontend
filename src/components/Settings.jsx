@@ -618,7 +618,6 @@ const BackupContent = () => {
 
 const ConfigurationContent = () => {
   const [appName, setAppName] = useState('');
-  const [logoUrl, setLogoUrl] = useState(null);
   const [location, setLocation] = useState('');
   const [items, setItems] = useState([]);
   const [receiptThankYouMessage, setReceiptThankYouMessage] = useState('');
@@ -627,7 +626,6 @@ const ConfigurationContent = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [logoPreview, setLogoPreview] = useState(null);
 
   useEffect(() => {
     fetchConfiguration();
@@ -640,12 +638,6 @@ const ConfigurationContent = () => {
       const response = await configurationAPI.getConfiguration();
       if (response.success) {
         setAppName(response.configuration.app_name || 'Shop Accountant');
-        if (response.configuration.logo_url) {
-          setLogoUrl(`http://localhost:5000${response.configuration.logo_url}`);
-        } else {
-          // Use default logo
-          setLogoUrl(null);
-        }
         setLocation(response.configuration.location || '');
         setItems(response.configuration.items || []);
         setReceiptThankYouMessage(response.configuration.receipt_thank_you_message ?? 'Thank you for your business');
@@ -683,61 +675,6 @@ const ConfigurationContent = () => {
       }
     } catch (error) {
       setError('An error occurred while updating app name');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleLogoSelect = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Validate file type
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-      if (!allowedTypes.includes(file.type)) {
-        setError('Please select a valid image file (JPEG, PNG, GIF, or WebP)');
-        return;
-      }
-
-      // Validate file size (5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Image size must be less than 5MB');
-        return;
-      }
-
-      // Create preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setLogoPreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleLogoUpload = async () => {
-    const fileInput = document.getElementById('logo-input');
-    const file = fileInput?.files[0];
-    
-    if (!file) {
-      setError('Please select a logo image');
-      return;
-    }
-
-    setSaving(true);
-    setError('');
-    try {
-      const response = await configurationAPI.uploadLogo(file);
-      if (response.success) {
-        setSuccessMessage('Logo uploaded successfully!');
-        setLogoUrl(`http://localhost:5000${response.logo_url}`);
-        setLogoPreview(null);
-        fileInput.value = '';
-        // Update TopBar by triggering a custom event
-        window.dispatchEvent(new CustomEvent('configUpdated'));
-      } else {
-        setError(response.message || 'Failed to upload logo');
-      }
-    } catch (error) {
-      setError('An error occurred while uploading logo');
     } finally {
       setSaving(false);
     }
@@ -791,61 +728,6 @@ const ConfigurationContent = () => {
             <FaSave /> {saving ? 'Saving...' : 'Save'}
           </button>
         </div>
-      </div>
-
-      {/* Logo Section */}
-      <div className="config-section">
-        <h3 className="config-section-title">App Logo</h3>
-        <p className="config-section-description">Upload a logo image to replace the default logo</p>
-        
-        <div className="logo-preview-section">
-          <div className="logo-preview-container">
-            <div className="logo-preview-label">Current Logo:</div>
-            <div className="logo-preview-box">
-              {logoUrl ? (
-                <img src={logoUrl} alt="Current Logo" className="logo-preview-image" />
-              ) : (
-                <div className="logo-preview-placeholder">
-                  <FaImage className="logo-placeholder-icon" />
-                  <span>Default Logo</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {logoPreview && (
-            <div className="logo-preview-container">
-              <div className="logo-preview-label">New Logo Preview:</div>
-              <div className="logo-preview-box">
-                <img src={logoPreview} alt="Logo Preview" className="logo-preview-image" />
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="logo-upload-section">
-          <label htmlFor="logo-input" className="logo-upload-label">
-            <FaUpload /> Select Logo Image
-          </label>
-          <input
-            type="file"
-            id="logo-input"
-            accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-            onChange={handleLogoSelect}
-            className="logo-input"
-            disabled={saving}
-          />
-          {logoPreview && (
-            <button
-              onClick={handleLogoUpload}
-              className="config-save-btn"
-              disabled={saving}
-            >
-              <FaUpload /> {saving ? 'Uploading...' : 'Upload Logo'}
-            </button>
-          )}
-        </div>
-        <p className="config-hint">Supported formats: JPEG, PNG, GIF, WebP. Max size: 5MB</p>
       </div>
 
       {/* Location Section */}
@@ -1136,9 +1018,9 @@ const PinSettingContent = () => {
       {error && <div className="error-message">{error}</div>}
 
       <div className="config-section pin-config-section">
-        <h3 className="config-section-title">Goal component</h3>
+        <h3 className="config-section-title">Goal & Gain/Loss components</h3>
         <p className="config-section-description">
-          When a PIN is set, any user must enter it to access the Goal page.
+          When a PIN is set, any user must enter it to access the Goal or Gain/Loss pages.
         </p>
 
         {goalPinStatus.hasPin && (
@@ -1207,7 +1089,7 @@ const PinSettingContent = () => {
         )}
         {!isAdmin && !goalPinStatus.hasPin && (
           <p className="config-hint">
-            <FaUnlock className="pin-hint-icon" /> Only the admin account can set a PIN for the Goal component.
+            <FaUnlock className="pin-hint-icon" /> Only the admin account can set a PIN for the Goal or Gain/Loss components.
           </p>
         )}
       </div>
