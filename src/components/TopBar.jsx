@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FaEllipsisV, FaCamera, FaTrash, FaTimes } from 'react-icons/fa';
-import logo from '../assets/logo.jpg';
-import { configurationAPI } from '../api';
+import { configurationAPI, getFullImageUrl } from '../api';
+import SuccessMessage from './SuccessMessage';
 import './TopBar.css';
 
 const TopBar = ({ onMenuToggle }) => {
@@ -11,6 +11,7 @@ const TopBar = ({ onMenuToggle }) => {
   const [logoPreview, setLogoPreview] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     fetchConfiguration();
@@ -31,9 +32,8 @@ const TopBar = ({ onMenuToggle }) => {
       if (response.success) {
         setAppName(response.configuration.app_name || 'Shop Accountant');
         if (response.configuration.logo_url) {
-          let url = response.configuration.logo_url;
-          url = url.startsWith('http') ? url : `${window.location.origin}${url}`;
-          const cacheBusted = `${url}${url.includes('?') ? '&' : '?'}_=${Date.now()}`;
+          let url = getFullImageUrl(response.configuration.logo_url);
+          const cacheBusted = url ? `${url}${url.includes('?') ? '&' : '?'}_=${Date.now()}` : null;
           setLogoUrl(cacheBusted);
         } else {
           setLogoUrl(null);
@@ -90,13 +90,12 @@ const TopBar = ({ onMenuToggle }) => {
     try {
       const response = await configurationAPI.uploadLogo(file);
       if (response.success) {
-        // support both remote (FTP) and local paths returned by the API
         const raw = response.logo_url || null;
-        const final = raw ? (raw.startsWith('http') ? raw : `${window.location.origin}${raw}`) : null;
-        // add cache-bust so browser shows the new image immediately
+        const final = getFullImageUrl(raw);
         const urlToUse = final ? `${final}${final.includes('?') ? '&' : '?'}_=${Date.now()}` : null;
-        if (urlToUse) setLogoUrl(urlToUse);
+        setLogoUrl(urlToUse);
 
+        setSuccessMessage('Logo uploaded successfully!');
         setShowLogoModal(false);
         setLogoPreview(null);
         fileInput.value = '';
@@ -104,9 +103,9 @@ const TopBar = ({ onMenuToggle }) => {
       } else {
         setError(response.message || 'Failed to upload logo');
       }
-    } catch (error) {
+    } catch (err) {
       setError('An error occurred while uploading logo');
-      console.error('Logo upload error:', error);
+      console.error('Logo upload error:', err);
     } finally {
       setUploading(false);
     }
@@ -121,6 +120,7 @@ const TopBar = ({ onMenuToggle }) => {
       const response = await configurationAPI.deleteLogo();
       if (response.success) {
         setLogoUrl(null);
+        setSuccessMessage('Logo removed successfully!');
         setShowLogoModal(false);
         window.dispatchEvent(new CustomEvent('configUpdated'));
       } else {
@@ -142,6 +142,9 @@ const TopBar = ({ onMenuToggle }) => {
 
   return (
     <>
+      {successMessage && (
+        <SuccessMessage message={successMessage} onClose={() => setSuccessMessage('')} />
+      )}
       <header className="topbar-whatsapp">
         <h1 className="topbar-app-name">{appName}</h1>
         <div className="topbar-right-icons">
@@ -151,14 +154,22 @@ const TopBar = ({ onMenuToggle }) => {
             title="Click to change logo"
             aria-label="Change logo"
           >
-            <img 
-              src={logoUrl || logo} 
-              alt={`${appName} Logo`} 
-              className="topbar-logo-icon"
-              onError={(e) => {
-                e.target.src = logo;
-              }}
-            />
+            {logoUrl ? (
+              <img 
+                src={logoUrl} 
+                alt={`${appName} Logo`} 
+                className="topbar-logo-icon"
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  const ph = e.target.nextElementSibling;
+                  if (ph) ph.classList.add('visible');
+                }}
+              />
+            ) : null}
+            <span className={`topbar-logo-placeholder ${logoUrl ? '' : 'visible'}`} aria-hidden="true">
+              <FaCamera />
+            </span>
             <div className="topbar-logo-overlay">
               <FaCamera className="topbar-camera-icon" />
             </div>
@@ -196,7 +207,7 @@ const TopBar = ({ onMenuToggle }) => {
               {logoUrl && (
                 <div className="topbar-modal-current-logo">
                   <p className="topbar-modal-label">Current Logo:</p>
-                  <img src={logoUrl} alt="Current Logo" className="topbar-modal-logo-image" />
+                  <img src={logoUrl} alt="Current Logo" className="topbar-modal-logo-image" referrerPolicy="no-referrer" />
                 </div>
               )}
 

@@ -7,8 +7,6 @@ import {
   FaExclamationTriangle,
   FaSave,
   FaEdit,
-  FaUpload,
-  FaImage,
   FaPlus,
   FaTrash,
   FaCheckCircle,

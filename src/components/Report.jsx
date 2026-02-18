@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FaPrint, FaCalendarAlt, FaChartLine, FaShoppingCart, FaMoneyBillWave, FaCreditCard, FaExclamationTriangle, FaCheckCircle, FaBriefcase, FaCalendarDay, FaBox } from 'react-icons/fa';
+import { FaPrint, FaCalendarAlt, FaChartLine, FaMoneyBillWave, FaCreditCard, FaExclamationTriangle, FaBriefcase, FaCalendarDay, FaBox } from 'react-icons/fa';
 import { purchasesAPI, incomeAPI, debtAPI, expensesAPI, currencyAPI, configurationAPI } from '../api';
 import { formatCurrency as formatCurrencyUtil, fetchDefaultCurrency } from '../utils/currency';
 import jsPDF from 'jspdf';
@@ -256,16 +256,11 @@ const Report = () => {
   }, [activeTab]);
 
   // Calculate totals
-  const inventoryTotal = inventory.reduce((sum, item) => sum + (parseFloat(item.total_amount) || 0), 0);
   const salesTotal = sales.reduce((sum, record) => sum + (parseFloat(record.total_price) || 0), 0);
-  const debtsTotal = debts.reduce((sum, record) => sum + (parseFloat(record.total_price) || 0), 0);
   const debtsPaid = debts.reduce((sum, record) => sum + (parseFloat(record.amount_payable_now) || 0), 0);
   const expensesTotal = expenses.reduce((sum, record) => sum + (parseFloat(record.amount) || 0), 0);
-
-  // Calculate gain/loss
   const totalRevenue = salesTotal + debtsPaid;
   const totalCosts = expensesTotal;
-  const gainLoss = totalRevenue - totalCosts;
 
   // Most sold items - normalize item names to avoid duplicates
   const itemSalesCount = {};
@@ -346,19 +341,6 @@ const Report = () => {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
     return `${dayName} ${day}/${month}/${year}`;
-  };
-
-  const handleOpenReportPrintModal = (kind) => {
-    setReportPrintKind(kind);
-    setShowReportPrintModal(true);
-  };
-
-  const handleReportPrintConfirm = (printerType) => {
-    if (reportPrintKind === 'executive') generateExecutiveReportPDF({ printerType, action: 'print' });
-    else if (reportPrintKind === 'daily') generateDailyReportPDF({ printerType, action: 'print' });
-    else if (reportPrintKind === 'stocks') generateStocksReportPDF({ printerType, action: 'print' });
-    setShowReportPrintModal(false);
-    setReportPrintKind(null);
   };
 
   const generateExecutiveReportPDF = (options = {}) => {
@@ -501,111 +483,12 @@ const Report = () => {
       return `${dayName} ${day}/${month}/${year}`;
     };
 
-    // Calculate gain/loss per item
-    const calculateGainLoss = () => {
-      const itemProfitLoss = {};
-      
-      // Process sales
-      sales.forEach(sale => {
-        const itemName = sale.name;
-        const inventoryItem = inventory.find(inv => inv.name === itemName);
-        const costPrice = inventoryItem ? parseFloat(inventoryItem.unit_price) || 0 : 0;
-        const sellingPrice = parseFloat(sale.unit_price) || 0;
-        const pcsSold = parseInt(sale.pcs) || 0;
-        const totalCost = costPrice * pcsSold;
-        const totalRevenue = sellingPrice * pcsSold;
-        const profitLoss = totalRevenue - totalCost;
-
-        if (!itemProfitLoss[itemName]) {
-          itemProfitLoss[itemName] = {
-            name: itemName,
-            costPrice: costPrice,
-            sellingPrice: sellingPrice,
-            pcsSold: 0,
-            totalCost: 0,
-            totalRevenue: 0,
-            profitLoss: 0
-          };
-        }
-        
-        itemProfitLoss[itemName].pcsSold += pcsSold;
-        itemProfitLoss[itemName].totalCost += totalCost;
-        itemProfitLoss[itemName].totalRevenue += totalRevenue;
-        itemProfitLoss[itemName].profitLoss += profitLoss;
-      });
-
-      // Process debts
-      debts.forEach(debt => {
-        const itemName = debt.name;
-        const inventoryItem = inventory.find(inv => inv.name === itemName);
-        const costPrice = inventoryItem ? parseFloat(inventoryItem.unit_price) || 0 : 0;
-        const sellingPrice = parseFloat(debt.unit_price) || 0;
-        const pcsSold = parseInt(debt.pcs) || 0;
-        const totalCost = costPrice * pcsSold;
-        const totalRevenue = sellingPrice * pcsSold;
-        const profitLoss = totalRevenue - totalCost;
-
-        if (!itemProfitLoss[itemName]) {
-          itemProfitLoss[itemName] = {
-            name: itemName,
-            costPrice: costPrice,
-            sellingPrice: sellingPrice,
-            pcsSold: 0,
-            totalCost: 0,
-            totalRevenue: 0,
-            profitLoss: 0
-          };
-        }
-        
-        itemProfitLoss[itemName].pcsSold += pcsSold;
-        itemProfitLoss[itemName].totalCost += totalCost;
-        itemProfitLoss[itemName].totalRevenue += totalRevenue;
-        itemProfitLoss[itemName].profitLoss += profitLoss;
-      });
-
-      return Object.values(itemProfitLoss);
+    // Helper to convert amount from FCFA to a specific currency
+    const convertFromFCFAHelperPDF = (amount, currency) => {
+      if (!currency || currency.code === 'FCFA') return amount;
+      const rate = parseFloat(currency.conversion_rate_to_fcfa) || 1;
+      return amount / rate;
     };
-
-    const gainLossData = calculateGainLoss();
-
-    // Header function to be called on each page
-    const drawHeader = () => {
-      const headerHeight = 22; // Increased to accommodate multi-line dates
-      doc.setFillColor(240, 240, 240);
-      doc.rect(startX, currentY, pageWidth - (margin * 2), headerHeight, 'F');
-      doc.setFillColor(220, 220, 220);
-      doc.rect(startX, currentY, pageWidth - (margin * 2), 2.5, 'F');
-      doc.setFillColor(180, 180, 180);
-      doc.rect(startX + pageWidth - (margin * 2) - 35, currentY, 35, headerHeight, 'F');
-
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text(appName.toUpperCase(), startX + 6, currentY + 7);
-
-    // Report Title (dark text)
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('EXECUTIVE REPORT', startX + 6, currentY + 13);
-
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(255, 255, 255);
-    doc.text('Period:', startX + pageWidth - (margin * 2) - 33, currentY + 7);
-    doc.setFontSize(6);
-    // Split date range across multiple lines to prevent cutting
-    const startDateText = formatDateForPDF(dateRange.startDate);
-    const endDateText = formatDateForPDF(dateRange.endDate);
-    doc.text(startDateText, startX + pageWidth - (margin * 2) - 33, currentY + 10);
-    doc.text(endDateText, startX + pageWidth - (margin * 2) - 33, currentY + 13);
-    doc.text(`Generated:`, startX + pageWidth - (margin * 2) - 33, currentY + 16);
-      doc.text(formatDateForPDF(new Date().toISOString()), startX + pageWidth - (margin * 2) - 33, currentY + 19);
-
-      currentY += 25; // Increased to match new header height
-    };
-
-    // Draw header on first page
-    drawHeader();
 
     // Helper function to format currency for PDF
     const formatCurrencyForPDF = (amount) => {
@@ -620,18 +503,18 @@ const Report = () => {
         const eurCurrency = currencies.find(c => c.code === 'EUR');
         
         if (usdCurrency) {
-          const usdAmount = convertFromFCFAHelper(amount, usdCurrency);
+          const usdAmount = convertFromFCFAHelperPDF(amount, usdCurrency);
           result += ` / USD ${usdAmount.toFixed(2)}`;
         }
         if (eurCurrency) {
-          const eurAmount = convertFromFCFAHelper(amount, eurCurrency);
+          const eurAmount = convertFromFCFAHelperPDF(amount, eurCurrency);
           result += ` / EUR ${eurAmount.toFixed(2)}`;
         }
         return result;
       } else {
         const curr = selectedCurrency || defaultCurrency;
         if (curr && curr.code !== 'FCFA') {
-          const converted = convertFromFCFAHelper(amount, curr);
+          const converted = convertFromFCFAHelperPDF(amount, curr);
           const formatted = new Intl.NumberFormat('en-US', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
@@ -645,10 +528,28 @@ const Report = () => {
       }
     };
 
+    // Header for Executive report (used on page breaks)
+    const drawHeader = () => {
+      const headerHeight = 18;
+      doc.setFillColor(240, 240, 240);
+      doc.rect(startX, currentY, pageWidth - (margin * 2), headerHeight, 'F');
+      doc.setFillColor(220, 220, 220);
+      doc.rect(startX, currentY, pageWidth - (margin * 2), 2.5, 'F');
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(appName.toUpperCase(), startX + 6, currentY + 7);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.text('EXECUTIVE REPORT', startX + 6, currentY + 12);
+      doc.setFontSize(7);
+      doc.text(`${formatDateForPDF(dateRange.startDate)} - ${formatDateForPDF(dateRange.endDate)}`, startX + 6, currentY + 16);
+      currentY += headerHeight + 2;
+    };
+
     // Helper function to check if new page is needed
     const checkPageBreak = (requiredHeight) => {
       if (currentY + requiredHeight > maxPageHeight) {
-        // Add footer to current page
         const footerY = pageHeight - margin - 10;
         doc.setDrawColor(200, 200, 200);
         doc.setLineWidth(0.3);
@@ -657,7 +558,6 @@ const Report = () => {
         doc.setTextColor(100, 100, 100);
         doc.setFont('helvetica', 'italic');
         doc.text('Generated by ' + appName, startX + (pageWidth - margin * 2) / 2, footerY + 5, { align: 'center' });
-        
         doc.addPage();
         currentY = margin;
         drawHeader();
@@ -698,15 +598,18 @@ const Report = () => {
       
       let x = startX;
       headers.forEach((header, index) => {
-        if (index > 0) {
-          doc.line(x, y, x, y + rowHeight);
-        }
         doc.text(header, x + 1, y + 3.5);
-        x += proportionalColWidths[index];
+        
+        // Draw vertical border at the END of this column (before moving to next)
+        if (index < headers.length - 1) {
+          x += proportionalColWidths[index];
+          doc.line(x, y, x, y + rowHeight);
+        } else {
+          x += proportionalColWidths[index];
+        }
       });
       y += rowHeight;
 
-      // Table rows
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
       
@@ -752,9 +655,7 @@ const Report = () => {
           
           x = startX;
           headers.forEach((header, index) => {
-            if (index > 0) {
-              doc.line(x, y, x, y + rowHeight);
-            }
+            if (index > 0) doc.line(x, y, x, y + rowHeight);
             doc.text(header, x + 1, y + 3.5);
             x += colWidths[index];
           });
@@ -764,34 +665,44 @@ const Report = () => {
         const isLastRow = rowIndex === rows.length - 1;
         const isHighlighted = highlightLastRow && isLastRow;
         
-        // Row background
         if (isHighlighted && highlightColor) {
-          doc.setFillColor(200, 220, 240); // Lighter blue for totals
+          doc.setFillColor(highlightColor.r, highlightColor.g, highlightColor.b);
           doc.rect(startX, y, tableWidth, rowHeight, 'F');
           doc.setTextColor(0, 0, 0);
         } else if (rowIndex % 2 === 0 && !isHighlighted) {
-          doc.setFillColor(252, 252, 252); // Very light grey
+          doc.setFillColor(252, 252, 252);
           doc.rect(startX, y, tableWidth, rowHeight, 'F');
           doc.setTextColor(0, 0, 0);
         } else if (!isHighlighted) {
           doc.setTextColor(0, 0, 0);
         }
         
-        // Draw borders
         doc.setDrawColor(200, 200, 200);
         doc.setLineWidth(0.1);
         doc.rect(startX, y, tableWidth, rowHeight);
         
         x = startX;
         row.forEach((cell, colIndex) => {
-          // Vertical borders
-          if (colIndex > 0) {
-            doc.line(x, y, x, y + rowHeight);
+          // Ensure text fits within cell boundaries - clip to prevent overflow
+          const maxCellWidth = Math.max(1, proportionalColWidths[colIndex] - 2);
+          const cellValue = String(cell || '').trim();
+          const cellText = doc.splitTextToSize(cellValue, maxCellWidth);
+          // Only render the first line to prevent overflow into next column
+          if (cellText && cellText.length > 0) {
+            // Ensure we don't render empty strings or just whitespace
+            const textToRender = cellText[0].trim();
+            if (textToRender) {
+              doc.text(textToRender, x + 1, y + 3.5);
+            }
           }
           
-          const cellText = doc.splitTextToSize(String(cell || ''), proportionalColWidths[colIndex] - 2);
-          doc.text(cellText[0] || '', x + 1, y + 3.5);
-          x += proportionalColWidths[colIndex];
+          // Draw vertical border at the END of this column (before moving to next)
+          if (colIndex < row.length - 1) {
+            x += proportionalColWidths[colIndex];
+            doc.line(x, y, x, y + rowHeight);
+          } else {
+            x += proportionalColWidths[colIndex];
+          }
         });
         y += rowHeight;
       });
@@ -1107,7 +1018,7 @@ const Report = () => {
     };
 
     // Helper function to draw table
-    const drawTable = (headers, rows, startX, startY, colWidths, title = null, highlightLastRow = false, highlightColor = null) => {
+    const drawTable = (headers, rows, startX, startY, colWidths, title = null, highlightLastRow = false) => {
       let y = startY;
       const rowHeight = 5;
       const totalColWidths = colWidths.reduce((a, b) => a + b, 0);
@@ -1141,7 +1052,6 @@ const Report = () => {
       headers.forEach((header, index) => {
         doc.text(header, x + 1, y + 3.5);
         
-        // Draw vertical border at the END of this column (before moving to next)
         if (index < headers.length - 1) {
           x += proportionalColWidths[index];
           doc.line(x, y, x, y + rowHeight);
@@ -1192,7 +1102,7 @@ const Report = () => {
           headers.forEach((header, index) => {
             if (index > 0) doc.line(x, y, x, y + rowHeight);
             doc.text(header, x + 1, y + 3.5);
-            x += proportionalColWidths[index];
+            x += colWidths[index];
           });
           y += rowHeight;
         }
@@ -1200,8 +1110,8 @@ const Report = () => {
         const isLastRow = rowIndex === rows.length - 1;
         const isHighlighted = highlightLastRow && isLastRow;
         
-        if (isHighlighted && highlightColor) {
-          doc.setFillColor(highlightColor.r, highlightColor.g, highlightColor.b);
+        if (isHighlighted) {
+          doc.setFillColor(200, 220, 240);
           doc.rect(startX, y, tableWidth, rowHeight, 'F');
           doc.setTextColor(0, 0, 0);
         } else if (rowIndex % 2 === 0 && !isHighlighted) {
@@ -1218,20 +1128,16 @@ const Report = () => {
         
         x = startX;
         row.forEach((cell, colIndex) => {
-          // Ensure text fits within cell boundaries - clip to prevent overflow
           const maxCellWidth = Math.max(1, proportionalColWidths[colIndex] - 2);
           const cellValue = String(cell || '').trim();
           const cellText = doc.splitTextToSize(cellValue, maxCellWidth);
-          // Only render the first line to prevent overflow into next column
           if (cellText && cellText.length > 0) {
-            // Ensure we don't render empty strings or just whitespace
             const textToRender = cellText[0].trim();
             if (textToRender) {
               doc.text(textToRender, x + 1, y + 3.5);
             }
           }
           
-          // Draw vertical border at the END of this column (before moving to next)
           if (colIndex < row.length - 1) {
             x += proportionalColWidths[colIndex];
             doc.line(x, y, x, y + rowHeight);
@@ -1753,7 +1659,7 @@ const Report = () => {
           headers.forEach((header, index) => {
             if (index > 0) doc.line(x, y, x, y + rowHeight);
             doc.text(header, x + 1, y + 3.5);
-            x += proportionalColWidths[index];
+            x += colWidths[index];
           });
           y += rowHeight;
         }
@@ -1845,6 +1751,19 @@ const Report = () => {
       if (w) w.onload = () => setTimeout(() => w.print(), 400);
       setTimeout(() => URL.revokeObjectURL(url), 15000);
     } else doc.save(filename);
+  };
+
+  const handleOpenReportPrintModal = (kind) => {
+    setReportPrintKind(kind);
+    setShowReportPrintModal(true);
+  };
+
+  const handleReportPrintConfirm = (printerType) => {
+    if (reportPrintKind === 'executive') generateExecutiveReportPDF({ printerType, action: 'print' });
+    else if (reportPrintKind === 'daily') generateDailyReportPDF({ printerType, action: 'print' });
+    else if (reportPrintKind === 'stocks') generateStocksReportPDF({ printerType, action: 'print' });
+    setShowReportPrintModal(false);
+    setReportPrintKind(null);
   };
 
   return (

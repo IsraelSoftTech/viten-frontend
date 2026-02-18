@@ -32,7 +32,26 @@
   object-fit: cover;
   border-radius: 50%;
   cursor: pointer;
+  position: relative;
+  z-index: 1;
 }
+
+.topbar-logo-placeholder {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #e8e8e8;
+  color: #888;
+  font-size: 12px;
+}
+
+.topbar-logo-placeholder.visible {
+  display: flex;
+}
+
 
 .topbar-menu-dots {
   display: flex;
@@ -69,6 +88,12 @@
     width: 48px;
   }
 
+  .topbar-logo-placeholder {
+    width: 48px;
+    height: 48px;
+    font-size: 18px;
+  }
+
   .topbar-menu-dots {
     display: none;
   }
@@ -92,6 +117,12 @@
   .topbar-logo-icon {
     height: 48px;
     width: 48px;
+  }
+
+  .topbar-logo-placeholder {
+    width: 48px;
+    height: 48px;
+    font-size: 18px;
   }
 
   .topbar-menu-dots {

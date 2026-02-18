@@ -303,6 +303,16 @@
   white-space: nowrap;
 }
 
+.purchase-picture-cell {
+  overflow: visible;
+  position: relative;
+  z-index: 1;
+}
+
+.purchase-picture-cell:hover {
+  z-index: 50;
+}
+
 .thumbnail-wrapper {
   display: inline-block;
   position: relative;
