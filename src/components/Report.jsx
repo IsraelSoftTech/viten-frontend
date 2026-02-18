@@ -256,11 +256,8 @@ const Report = () => {
   }, [activeTab]);
 
   // Calculate totals
-  const salesTotal = sales.reduce((sum, record) => sum + (parseFloat(record.total_price) || 0), 0);
-  const debtsPaid = debts.reduce((sum, record) => sum + (parseFloat(record.amount_payable_now) || 0), 0);
-  const expensesTotal = expenses.reduce((sum, record) => sum + (parseFloat(record.amount) || 0), 0);
-  const totalRevenue = salesTotal + debtsPaid;
-  const totalCosts = expensesTotal;
+
+
 
   // Most sold items - normalize item names to avoid duplicates
   const itemSalesCount = {};
@@ -279,14 +276,15 @@ const Report = () => {
     // Use total_price if it exists and is valid, otherwise use calculated value
     itemSalesCount[normalizedName].total += totalPrice > 0 ? totalPrice : calculatedTotal;
   });
-  const mostSoldItems = Object.values(itemSalesCount)
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 10);
 
-  // Low sales items (items with sales < 5 pieces in the period)
-  const lowSalesItems = Object.values(itemSalesCount)
-    .filter(item => item.count < 5)
-    .sort((a, b) => a.count - b.count);
+  // const mostSoldItems = Object.values(itemSalesCount)
+  //   .sort((a, b) => b.count - a.count)
+  //   .slice(0, 10);
+
+  // // Low sales items (items with sales < 5 pieces in the period)
+  // const lowSalesItems = Object.values(itemSalesCount)
+  //   .filter(item => item.count < 5)
+  //   .sort((a, b) => a.count - b.count);
 
   // Helper to convert amount from FCFA to a specific currency
   const convertFromFCFAHelper = (amount, currency) => {

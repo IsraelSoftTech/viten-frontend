@@ -1,21 +1,17 @@
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
-/**
- * Resolve image URL to full absolute URL (required when frontend and API are on different origins)
- */
-export function getFullImageUrl(url) {
-  if (!url) return null;
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
-  if (url.startsWith('/')) {
-    try {
-      const base = new URL(API_BASE_URL);
-      return `${base.origin}${url}`;
-    } catch {
-      return url;
-    }
-  }
-  return url;
-}
+// image url
+export const getFullImageUrl = (path) => {
+  if (!path) return null;
+
+  // already full URL
+  if (path.startsWith('http')) return path;
+
+  // remove /api to get server root
+  const serverBase = API_BASE_URL.replace('/api', '');
+
+  return `${serverBase}${path}`;
+};
 
 // User API endpoints
 export const userAPI = {
@@ -39,6 +35,7 @@ export const userAPI = {
       };
     }
   },
+
 
   // Signup
   signup: async (userData) => {

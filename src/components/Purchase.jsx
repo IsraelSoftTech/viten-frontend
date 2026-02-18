@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FaPlus, FaEdit, FaTrash, FaTimes, FaSave } from 'react-icons/fa';
-import { purchasesAPI, getFullImageUrl } from '../api';
+import { purchasesAPI } from '../api';
 import { formatCurrency as formatCurrencyUtil, fetchDefaultCurrency } from '../utils/currency';
 import SuccessMessage from './SuccessMessage';
 import './Purchase.css';
@@ -129,7 +129,7 @@ const Purchase = () => {
       description: record.description || '',
       supplier_name: record.supplier_name || '',
       image: null,
-      image_preview: getFullImageUrl(record.image_url) || ''
+      image_preview: record.image_url || ''
     });
   };
 
@@ -545,21 +545,19 @@ const Purchase = () => {
                     className={`purchase-row ${highlightedId === record.id ? 'highlighted' : ''}`}
                   >
                     <td>{formatDate(record.date)}</td>
-                    <td className="purchase-picture-cell">
+                    <td>
                       {record.image_url ? (
                         <div
                           className="thumbnail-wrapper"
                           role="button"
                           tabIndex={0}
-                          onClick={() => openLightbox(getFullImageUrl(record.image_url))}
-                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLightbox(getFullImageUrl(record.image_url)); } }}
-                          title="Click to zoom"
+                          onClick={() => openLightbox(record.image_url)}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLightbox(record.image_url); } }}
+                          title="View image"
                         >
-                          <img src={getFullImageUrl(record.image_url)} className="purchase-thumbnail" alt={record.name || 'item'} referrerPolicy="no-referrer" />
+                          <img src={record.image_url} className="purchase-thumbnail" alt={record.name || 'item'} />
                         </div>
-                      ) : (
-                        <span className="no-image-placeholder">—</span>
-                      )}
+                      ) : '-'}
                     </td>
                     <td>{record.name}</td>
                     <td>{record.pcs}</td>
