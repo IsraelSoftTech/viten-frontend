@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaEllipsisV, FaCamera, FaTrash, FaTimes } from 'react-icons/fa';
+import { FaEllipsisV, FaTrash, FaTimes } from 'react-icons/fa';
 import { configurationAPI, getFullImageUrl } from '../api';
 import SuccessMessage from './SuccessMessage';
 import './TopBar.css';
@@ -149,6 +149,7 @@ const TopBar = ({ onMenuToggle }) => {
         <h1 className="topbar-app-name">{appName}</h1>
         <div className="topbar-right-icons">
           <button
+            type="button"
             className="topbar-logo-button"
             onClick={handleLogoClick}
             title="Click to change logo"
@@ -168,11 +169,8 @@ const TopBar = ({ onMenuToggle }) => {
               />
             ) : null}
             <span className={`topbar-logo-placeholder ${logoUrl ? '' : 'visible'}`} aria-hidden="true">
-              <FaCamera />
+              Logo
             </span>
-            <div className="topbar-logo-overlay">
-              <FaCamera className="topbar-camera-icon" />
-            </div>
           </button>
           <button
             type="button"
@@ -213,7 +211,7 @@ const TopBar = ({ onMenuToggle }) => {
 
               <div className="topbar-modal-upload-section">
                 <label htmlFor="topbar-logo-input" className="topbar-modal-upload-label">
-                  <FaCamera /> Select New Logo
+                  Select New Logo
                 </label>
                 <input
                   type="file"

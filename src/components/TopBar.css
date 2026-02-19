@@ -69,6 +69,12 @@
     width: 48px;
   }
 
+  .topbar-logo-placeholder {
+    width: 48px;
+    height: 48px;
+    font-size: 12px;
+  }
+
   .topbar-menu-dots {
     display: none;
   }
@@ -92,6 +98,12 @@
   .topbar-logo-icon {
     height: 48px;
     width: 48px;
+  }
+
+  .topbar-logo-placeholder {
+    width: 48px;
+    height: 48px;
+    font-size: 12px;
   }
 
   .topbar-menu-dots {
@@ -124,20 +136,21 @@
   background-color: rgba(0, 0, 0, 0.05);
 }
 
-.topbar-logo-overlay {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  background-color: #007AFF;
-  color: white;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  display: flex;
+.topbar-logo-placeholder {
+  display: none;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
-  border: 2px solid white;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #e8e8e8;
+  color: #888;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.topbar-logo-placeholder.visible {
+  display: flex;
 }
 
 /* Modal Overlay */

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { userAPI } from '../api';
@@ -15,6 +15,8 @@ const Login = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [showLoader, setShowLoader] = useState(false);
   const navigate = useNavigate();
+  const loginTimeoutsRef = useRef([]);
+  useEffect(() => () => { loginTimeoutsRef.current.forEach(clearTimeout); }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -25,16 +27,13 @@ const Login = () => {
       const response = await userAPI.login(username, password);
 
       if (response.success) {
-        // Store user data in localStorage
         if (response.user) {
           localStorage.setItem('user', JSON.stringify(response.user));
         }
         setSuccessMessage('Login successful!');
-        setShowLoader(true);
-        setTimeout(() => {
-          setShowLoader(false);
-          navigate('/dashboard');
-        }, 2000);
+        // After 2s show loader for 3s, then open dashboard
+        loginTimeoutsRef.current.push(setTimeout(() => setShowLoader(true), 2000));
+        loginTimeoutsRef.current.push(setTimeout(() => navigate('/dashboard'), 5000));
       } else {
         setError(response.message || 'Login failed. Please try again.');
       }

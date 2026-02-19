@@ -287,6 +287,27 @@ export const purchasesAPI = {
     }
   },
 
+  // Upload/update item image only (same as logo: POST with single file → saved to FTP, URL in DB)
+  uploadPurchaseImage: async (id, imageFile) => {
+    try {
+      const formData = new FormData();
+      formData.append('image', imageFile);
+
+      const response = await fetch(`${API_BASE_URL}/purchases/${id}/image`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Network error. Please check if the server is running.',
+      };
+    }
+  },
+
   // Update purchase record
   updatePurchase: async (id, purchaseData) => {
     try {

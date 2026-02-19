@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FaPlus, FaEdit, FaTrash, FaTimes, FaSave } from 'react-icons/fa';
-import { purchasesAPI } from '../api';
+import { purchasesAPI, getFullImageUrl } from '../api';
 import { formatCurrency as formatCurrencyUtil, fetchDefaultCurrency } from '../utils/currency';
 import SuccessMessage from './SuccessMessage';
 import './Purchase.css';
@@ -33,6 +33,12 @@ const Purchase = () => {
 
   // Lightbox for viewing full-size item images
   const [lightboxSrc, setLightboxSrc] = useState('');
+
+  // Image-update modal (logo-style: click placeholder → pick image → update)
+  const [imageModalRecord, setImageModalRecord] = useState(null);
+  const [imageModalPreview, setImageModalPreview] = useState(null);
+  const [imageModalError, setImageModalError] = useState('');
+  const [imageModalUploading, setImageModalUploading] = useState(false);
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') setLightboxSrc(''); };
@@ -129,7 +135,7 @@ const Purchase = () => {
       description: record.description || '',
       supplier_name: record.supplier_name || '',
       image: null,
-      image_preview: record.image_url || ''
+      image_preview: getFullImageUrl(record.image_url) || '' // image_url is the database URL (FTP or API)
     });
   };
 
@@ -168,6 +174,68 @@ const Purchase = () => {
       setFormData(prev => ({ ...prev, image: file, image_preview: ev.target.result }));
     };
     reader.readAsDataURL(file);
+  };
+
+  const openImageModal = (record) => {
+    setImageModalRecord(record);
+    setImageModalPreview(null);
+    setImageModalError('');
+  };
+
+  const closeImageModal = () => {
+    setImageModalRecord(null);
+    setImageModalPreview(null);
+    setImageModalError('');
+    const input = document.getElementById('purchase-image-modal-input');
+    if (input) input.value = '';
+  };
+
+  const handleImageModalFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowed.includes(file.type)) {
+      setImageModalError('Please select a valid image (JPEG, PNG, GIF, or WebP)');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setImageModalError('Image must be 5 MB or smaller');
+      return;
+    }
+    setImageModalError('');
+    const reader = new FileReader();
+    reader.onload = () => setImageModalPreview(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleImageModalUpload = async () => {
+    const input = document.getElementById('purchase-image-modal-input');
+    const file = input?.files[0];
+    if (!file || !imageModalRecord) return;
+    setImageModalUploading(true);
+    setImageModalError('');
+    try {
+      const response = await purchasesAPI.uploadPurchaseImage(imageModalRecord.id, file);
+      if (response.success && response.purchase) {
+        setSuccessMessage('Item image updated successfully!');
+        closeImageModal();
+        const url = response.purchase.image_url;
+        const cacheBusted = url ? `${url}${url.includes('?') ? '&' : '?'}_=${Date.now()}` : null;
+        setPurchaseRecords((prev) =>
+          prev.map((r) =>
+            r.id === response.purchase.id
+              ? { ...r, ...response.purchase, image_url: cacheBusted != null ? cacheBusted : response.purchase.image_url }
+              : r
+          )
+        );
+      } else {
+        setImageModalError(response.message || 'Failed to update image');
+      }
+    } catch (err) {
+      setImageModalError('An error occurred while updating image');
+    } finally {
+      setImageModalUploading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -545,19 +613,34 @@ const Purchase = () => {
                     className={`purchase-row ${highlightedId === record.id ? 'highlighted' : ''}`}
                   >
                     <td>{formatDate(record.date)}</td>
-                    <td>
-                      {record.image_url ? (
+                    <td className="purchase-picture-cell">
+                      {record.image_url ? ( /* display using database URL from API */
                         <div
                           className="thumbnail-wrapper"
                           role="button"
                           tabIndex={0}
-                          onClick={() => openLightbox(record.image_url)}
-                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLightbox(record.image_url); } }}
-                          title="View image"
+                          onClick={() => openLightbox(getFullImageUrl(record.image_url))}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLightbox(getFullImageUrl(record.image_url)); } }}
+                          title="Click to zoom"
                         >
-                          <img src={record.image_url} className="purchase-thumbnail" alt={record.name || 'item'} />
+                          <img src={getFullImageUrl(record.image_url)} className="purchase-thumbnail" alt={record.name || 'item'} referrerPolicy="no-referrer" />
                         </div>
-                      ) : '-'}
+                      ) : (
+                        <div
+                          className="purchase-thumbnail-placeholder purchase-thumbnail-placeholder-clickable"
+                          role="button"
+                          tabIndex={0}
+                          title="Click to add image"
+                          onClick={() => openImageModal(record)}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openImageModal(record); } }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                            <circle cx="8.5" cy="8.5" r="1.5" />
+                            <path d="M21 15l-5-5L5 21" />
+                          </svg>
+                        </div>
+                      )}
                     </td>
                     <td>{record.name}</td>
                     <td>{record.pcs}</td>
@@ -598,7 +681,69 @@ const Purchase = () => {
             <button className="lightbox-close" onClick={closeLightbox} aria-label="Close image">
               <FaTimes />
             </button>
-            <img src={lightboxSrc} alt="Item full" />
+            <img src={lightboxSrc} alt="Item full" referrerPolicy="no-referrer" />
+          </div>
+        </div>
+      )}
+
+      {/* Image-update modal (same pattern as logo: select image → update → show from DB URL) */}
+      {imageModalRecord && (
+        <div className="purchase-image-modal-overlay" onClick={closeImageModal}>
+          <div className="purchase-image-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="purchase-image-modal-header">
+              <h2>Add item image</h2>
+              <button
+                type="button"
+                className="purchase-image-modal-close"
+                onClick={closeImageModal}
+                disabled={imageModalUploading}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
+            <div className="purchase-image-modal-body">
+              <p className="purchase-image-modal-item-name">{imageModalRecord.name}</p>
+              {imageModalError && <div className="purchase-image-modal-error">{imageModalError}</div>}
+              <label htmlFor="purchase-image-modal-input" className="purchase-image-modal-upload-label">
+                Select image
+              </label>
+              <input
+                type="file"
+                id="purchase-image-modal-input"
+                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                onChange={handleImageModalFileSelect}
+                className="purchase-image-modal-file-input"
+                disabled={imageModalUploading}
+              />
+              {imageModalPreview && (
+                <div className="purchase-image-modal-preview">
+                  <p className="purchase-image-modal-label">Preview</p>
+                  <img src={imageModalPreview} alt="Preview" className="purchase-image-modal-preview-img" />
+                </div>
+              )}
+              <p className="purchase-image-modal-hint">JPEG, PNG, GIF, WebP (max 5MB)</p>
+            </div>
+            <div className="purchase-image-modal-footer">
+              {imageModalPreview && (
+                <button
+                  type="button"
+                  className="purchase-image-modal-btn purchase-image-modal-upload-btn"
+                  onClick={handleImageModalUpload}
+                  disabled={imageModalUploading}
+                >
+                  {imageModalUploading ? 'Updating...' : 'Update image'}
+                </button>
+              )}
+              <button
+                type="button"
+                className="purchase-image-modal-btn purchase-image-modal-cancel-btn"
+                onClick={closeImageModal}
+                disabled={imageModalUploading}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

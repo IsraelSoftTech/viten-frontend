@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { FaLock } from 'react-icons/fa';
-import { configurationAPI } from '../api';
-import { FaCalendarAlt, FaPrint } from 'react-icons/fa';
-import { gainAPI } from '../api';
+import { FaLock, FaCalendarAlt, FaPrint } from 'react-icons/fa';
+import { configurationAPI, gainAPI } from '../api';
 import { formatCurrency as formatCurrencyUtil } from '../utils/currency';
 import './Gain.css';
 import { getLocalDate, getFirstOfMonthLocal, extractYYYYMMDD } from '../utils/date';
