@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaMoneyBillWave, FaCreditCard, FaShoppingCart, FaExclamationTriangle } from 'react-icons/fa';
+import { FaMoneyBillWave, FaCreditCard, FaShoppingCart, FaBalanceScale, FaExclamationTriangle } from 'react-icons/fa';
 import { incomeAPI, expensesAPI, purchasesAPI, stockDeficiencyAPI } from '../api';
 import { formatCurrency as formatCurrencyUtil, fetchDefaultCurrency } from '../utils/currency';
 import './Dashboard.css';
@@ -19,40 +19,42 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        // Fetch income, expenses, and purchases records
+        // Fetch income (sales), expenses (Expenses component only), and purchases separately
         const [incomeResponse, expensesResponse, purchasesResponse] = await Promise.all([
           incomeAPI.getAllIncome(),
           expensesAPI.getAllExpenses(),
           purchasesAPI.getAllPurchases()
         ]);
         
-        let totalIncome = 0;
+        let totalSales = 0;
         let totalExpenses = 0;
         let totalPurchases = 0;
         
-        if (incomeResponse.success) {
-          const income = incomeResponse.income || [];
-          totalIncome = income.reduce((sum, record) => sum + (parseFloat(record.total_price) || 0), 0);
+        // Total Sales: from Income API (sales records only - NOT purchases)
+        if (incomeResponse.success && incomeResponse.income) {
+          const salesRecords = incomeResponse.income;
+          totalSales = salesRecords.reduce((sum, record) => sum + (parseFloat(record.total_price) || 0), 0);
         }
         
-        if (expensesResponse.success) {
-          const expenses = expensesResponse.expenses || [];
-          totalExpenses = expenses.reduce((sum, record) => sum + (parseFloat(record.amount) || 0), 0);
+        // Total Expenses: ONLY from Expenses component/API - does NOT include purchases
+        if (expensesResponse.success && expensesResponse.expenses) {
+          const expenseRecords = expensesResponse.expenses;
+          totalExpenses = expenseRecords.reduce((sum, record) => sum + (parseFloat(record.amount) || 0), 0);
         }
         
-        if (purchasesResponse.success) {
-          const purchases = purchasesResponse.purchases || [];
+        if (purchasesResponse.success && purchasesResponse.purchases) {
+          const purchases = purchasesResponse.purchases;
           totalPurchases = purchases.reduce((sum, record) => sum + (parseFloat(record.total_amount) || 0), 0);
         }
         
-        // Calculate Net Balance: Total Income - (Total Expenses + Total Purchases)
-        const netBalance = totalIncome - (totalExpenses + totalPurchases);
+        // Net Balance = Total Sales - Total Expenses (expenses from Expenses component only; purchases excluded)
+        const netBalance = totalSales - totalExpenses;
         
         setStats({
-          totalExpenses: totalExpenses,
-          totalIncome: totalIncome,
-          totalPurchases: totalPurchases,
-          netBalance: netBalance,
+          totalExpenses,
+          totalIncome: totalSales,
+          totalPurchases,
+          netBalance,
           loading: false
         });
       } catch (error) {
@@ -156,7 +158,13 @@ const Dashboard = () => {
       color: '#FF9800',
       bgColor: '#FFF8F0'
     },
-
+    {
+      title: 'Net Balance',
+      value: formatCurrency(stats.netBalance),
+      icon: FaBalanceScale,
+      color: stats.netBalance >= 0 ? '#2196F3' : '#F44336',
+      bgColor: stats.netBalance >= 0 ? '#E3F2FD' : '#FFEBEE'
+    }
   ];
 
   const netAmount = stats.netBalance;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaPlus, FaEdit, FaTrash, FaTimes, FaSave } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaTimes, FaSave, FaBoxes } from 'react-icons/fa';
 import { purchasesAPI, getFullImageUrl } from '../api';
 import { formatCurrency as formatCurrencyUtil, fetchDefaultCurrency } from '../utils/currency';
 import SuccessMessage from './SuccessMessage';
@@ -420,6 +420,20 @@ const Purchase = () => {
 
       {error && <div className="error-message">{error}</div>}
 
+      <div className="purchase-summary-cards">
+        <div className="purchase-summary-card">
+          <div className="purchase-summary-card-icon" style={{ backgroundColor: '#E3F2FD', color: '#2196F3' }}>
+            <FaBoxes />
+          </div>
+          <div className="purchase-summary-card-content">
+            <h3 className="purchase-summary-card-title">Total Items Recorded</h3>
+            <p className="purchase-summary-card-value">
+              {loading ? 'Loading...' : purchaseRecords.length}
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="sort-filter-controls">
         <div className="sort-controls">
           <label htmlFor="sort-select">Sort by:</label>
@@ -614,16 +628,21 @@ const Purchase = () => {
                   >
                     <td>{formatDate(record.date)}</td>
                     <td className="purchase-picture-cell">
-                      {record.image_url ? ( /* display using database URL from API */
+                      {(record.image_path || record.image_url) ? (
                         <div
                           className="thumbnail-wrapper"
                           role="button"
                           tabIndex={0}
-                          onClick={() => openLightbox(getFullImageUrl(record.image_url))}
-                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLightbox(getFullImageUrl(record.image_url)); } }}
+                          onClick={() => openLightbox(getFullImageUrl(record.image_url || `/api/purchases/asset/${record.id}`))}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLightbox(getFullImageUrl(record.image_url || `/api/purchases/asset/${record.id}`)); } }}
                           title="Click to zoom"
                         >
-                          <img src={getFullImageUrl(record.image_url)} className="purchase-thumbnail" alt={record.name || 'item'} referrerPolicy="no-referrer" />
+                          <img
+                            src={getFullImageUrl(record.image_url || `/api/purchases/asset/${record.id}`)}
+                            className="purchase-thumbnail"
+                            alt={record.name || 'item'}
+                            referrerPolicy="no-referrer"
+                          />
                         </div>
                       ) : (
                         <div
